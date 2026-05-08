@@ -1,7 +1,6 @@
 from fastapi import FastAPI
-from core.weights import parse_weights, add_weight, get_last_weight
-from core.phases import parse_phases, update_phase, get_active_phase
-from core.reports import  add_report, parse_reports
+from services import update_phase, add_weight
+from db.queries import get_weights, get_last_weight, get_active_phase, get_phases, get_reports, insert_report
 from api.schemas import WeightInput, PhaseInput, ReportInput
 
 app = FastAPI()
@@ -9,7 +8,7 @@ app = FastAPI()
 # Weights
 @app.get("/weights")
 async def get_weights_ep(): 
-    return parse_weights()
+    return get_weights()
 
 @app.get("/weights/last")
 async def get_last_weight_ep():
@@ -26,8 +25,8 @@ async def get_active_phase_ep():
     return get_active_phase()
 
 @app.get("/phases")
-async def get_phases():
-    return parse_phases()
+async def get_phases_ep():
+    return get_phases()
 
 @app.post("/phases")
 async def post_phase_ep(data: PhaseInput):
@@ -36,9 +35,9 @@ async def post_phase_ep(data: PhaseInput):
 
 # Reports
 @app.get("/reports")
-async def get_reports():
-    return parse_reports()
+async def get_reports_ep():
+    return get_reports()
 
 @app.post("/reports")
-async def post_report(data: ReportInput):
-    return add_report(data.model_dump())
+async def post_report_ep(data: ReportInput):
+    return insert_report(data.model_dump())

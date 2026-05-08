@@ -1,6 +1,6 @@
 # Weights API
 
-REST API for personal body tracking built with FastAPI. Manages daily weight logs, training phases (bulk, cut, maintenance) and nutritionist body composition reports.
+REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance) and nutritionist body composition reports.
 
 Part of the [Weights](https://github.com/sergio-fernandez-sanchez/Weights-Desktop) project ecosystem.
 
@@ -34,12 +34,12 @@ Part of the [Weights](https://github.com/sergio-fernandez-sanchez/Weights-Deskto
 
 ```
 weights-api/
-├── core/               # Business logic
-│   ├── csv_utils.py    # Generic CSV read/write
-│   ├── weights.py      # Weight logic
-│   ├── phases.py       # Phase logic
-│   └── reports.py      # Report logic
-├── data/               # CSV databases (gitignored)
+├── services.py         # Business logic
+├── report_generator.py # AI report text generation
+├── migrate.py          # One-time CSV to PostgreSQL migration script
+├── db/
+│   ├── database.py     # PostgreSQL connection
+│   └── queries.py      # SQL queries
 ├── api/
 │   ├── main.py         # FastAPI app and routes
 │   └── schemas.py      # Pydantic input/output models
@@ -67,19 +67,76 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**4. Run the server**
+**4. Create a PostgreSQL database**
+```bash
+psql postgres
+CREATE DATABASE weights;
+\q
+```
+
+**5. Create the tables**
+```bash
+psql weights
+```
+```sql
+CREATE TABLE weights (
+    id SERIAL PRIMARY KEY,
+    date DATE,
+    weight NUMERIC(5,2)
+);
+
+CREATE TABLE phases (
+    id SERIAL PRIMARY KEY,
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    phase_type VARCHAR(50) NOT NULL,
+    weight_goal NUMERIC(5,2) NULL,
+    date_goal DATE NULL
+);
+
+CREATE TABLE reports (
+    id SERIAL PRIMARY KEY,
+    date DATE NOT NULL,
+    body_fat_pct NUMERIC(5,2) NULL,
+    skeletal_muscle_mass NUMERIC(5,2) NULL,
+    fat_free_mass NUMERIC(5,2) NULL,
+    visceral_fat_index NUMERIC(5,2) NULL,
+    muscle_quality NUMERIC(5,2) NULL,
+    trunk_fat_kg NUMERIC(5,2) NULL,
+    trunk_fat_pct NUMERIC(5,2) NULL,
+    total_body_water NUMERIC(5,2) NULL,
+    neck_cm NUMERIC(5,2) NULL,
+    chest_cm NUMERIC(5,2) NULL,
+    bicep_cm NUMERIC(5,2) NULL,
+    hip_cm NUMERIC(5,2) NULL,
+    thigh_cm NUMERIC(5,2) NULL
+);
+```
+
+**6. Configure environment variables**
+```bash
+cp .env.example .env
+```
+Edit `.env` with your database credentials:
+```
+DB_HOST=localhost
+DB_NAME=weights
+DB_USER=your_user
+DB_PASSWORD=your_password
+```
+
+**7. (Optional) Migrate existing CSV data**
+```bash
+python3 migrate.py
+```
+
+**8. Run the server**
 ```bash
 uvicorn api.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`.
+API available at `http://localhost:8000`.
 Interactive docs at `http://localhost:8000/docs`.
-
----
-
-## Data
-
-All data is stored locally in CSV files inside `data/`. The folder is gitignored — when cloning the repo you need to create it manually and add your own CSV files.
 
 ---
 
@@ -89,6 +146,8 @@ All data is stored locally in CSV files inside `data/`. The folder is gitignored
 |---|---|
 | `fastapi` | Web framework |
 | `uvicorn` | ASGI server |
+| `psycopg2-binary` | PostgreSQL driver |
+| `python-dotenv` | Environment variables |
 
 ---
 

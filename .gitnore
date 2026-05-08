@@ -1,19 +1,15 @@
-cat > ~/dev/python/weights-web/weights-api/.gitignore << 'EOF'
 # Python
 __pycache__/
 *.pyc
 *.pyo
-
+ 
 # Virtual environment
 venv/
 weights-web-env/
-
-# Data (personal)
-data/*.csv
-
+ 
+ 
 # Mac
 .DS_Store
-
+ 
 # Environment variables
 .env
-EOF
