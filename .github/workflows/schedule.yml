@@ -1,0 +1,33 @@
+name: Railway Schedule
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Arrancar a las 6:00 UTC (8:00 España verano)
+    - cron: '0 21 * * *'  # Pausar a las 21:00 UTC (23:00 España verano)
+
+jobs:
+  wake:
+    if: github.event.schedule == '0 6 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resume Railway service
+        run: |
+          curl -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { serviceInstanceRedeploy(environmentId: \"4726a657-89d2-4b7d-9cf8-0acd827da530\", serviceId: \"6401da8d-7670-4320-940e-73024348b2f8\") }"
+            }'
+
+  sleep:
+    if: github.event.schedule == '0 21 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pause Railway service
+        run: |
+          curl -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { serviceInstanceStop(environmentId: \"4726a657-89d2-4b7d-9cf8-0acd827da530\", serviceId: \"6401da8d-7670-4320-940e-73024348b2f8\") }"
+            }'

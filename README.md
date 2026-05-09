@@ -2,6 +2,8 @@
 
 REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance) and nutritionist body composition reports. Includes JWT authentication with multi-user support.
 
+Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain time) to stay within the free tier.
+
 Part of the [Weights](https://github.com/sergio-fernandez-sanchez/Weights-Desktop) project ecosystem.
 
 ---
@@ -55,15 +57,18 @@ All endpoints except `/auth/register` and `/auth/login` require a valid JWT toke
 
 ```
 weights-api/
-├── services.py         # Business logic
-├── report_generator.py # AI report text generation
+├── services.py              # Business logic
+├── report_generator.py      # AI report text generation
 ├── db/
-│   ├── database.py     # PostgreSQL connection
-│   └── queries.py      # SQL queries
+│   ├── database.py          # PostgreSQL connection
+│   └── queries.py           # SQL queries
 ├── api/
-│   ├── main.py         # FastAPI app and routes
-│   ├── auth.py         # JWT authentication
-│   └── schemas.py      # Pydantic input/output models
+│   ├── main.py              # FastAPI app and routes
+│   ├── auth.py              # JWT authentication
+│   └── schemas.py           # Pydantic input/output models
+├── .github/
+│   └── workflows/
+│       └── schedule.yml     # Auto pause/resume Railway service
 └── requirements.txt
 ```
 
@@ -148,12 +153,13 @@ CREATE INDEX idx_reports_user_date ON reports(user_id, date);
 ```bash
 cp .env.example .env
 ```
-Edit `.env` with your credentials:
+Edit `.env`:
 ```
 DB_HOST=localhost
 DB_NAME=weights
 DB_USER=your_user
 DB_PASSWORD=your_password
+DB_PORT=5432
 JWT_SECRET=your_secret_key
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=1440
@@ -179,7 +185,7 @@ Interactive docs at `http://localhost:8000/docs`.
 | `python-dotenv` | Environment variables |
 | `PyJWT` | JWT token generation and verification |
 | `passlib` | Password hashing |
-| `bcrypt` | Bcrypt hashing backend |
+| `bcrypt==4.0.1` | Bcrypt hashing backend |
 
 ---
 
