@@ -6,7 +6,7 @@ Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain ti
 
 Part of the [Weights](https://github.com/sergio-fernandez-sanchez/Weights-Desktop) project ecosystem.
 
----
+----
 
 ## Demo account
 
