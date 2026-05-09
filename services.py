@@ -2,15 +2,15 @@ from datetime import datetime, timedelta, date
 from db.queries import get_weight_on_date, update_weight, insert_weight, get_weights, get_phases, close_phase, insert_phase
 
 
-def add_weight(new_weight: dict) -> str:
+def add_weight(user_id: int, new_weight: dict) -> str:
     """
     Actualiza el ultimo peso o inserta uno nuevo dependiendo de si ya hay un regustro en el dia actual 
     """
-    status = update_weight(new_weight["weight"]) if get_weight_on_date(datetime.now().date()) else insert_weight(new_weight["weight"])
+    status = update_weight(new_weight["weight"], user_id) if get_weight_on_date(datetime.now().date(), user_id) else insert_weight(new_weight["weight"], user_id)
     return status
 
 
-def get_weights_filtered(mode: str, phase_start: str = None) -> list[dict]:
+def get_weights_filtered(user_id: int, mode: str, phase_start: str = None) -> list[dict]:
     """
     Devuelve pesos filtrados según el modo:
     - "all":   todos los registros
@@ -19,7 +19,7 @@ def get_weights_filtered(mode: str, phase_start: str = None) -> list[dict]:
     - "month": último mes
     - "year":  último año
     """
-    weights = get_weights()
+    weights = get_weights(user_id)
     today = datetime.now().date()
 
     if mode == "all":
@@ -39,13 +39,13 @@ def get_weights_filtered(mode: str, phase_start: str = None) -> list[dict]:
     return weights
 
 
-def get_weights_with_phase() -> list[dict]:
+def get_weights_with_phase(user_id: int) -> list[dict]:
     """
     Devuelve todos los registros de peso con el tipo de fase
     correspondiente a cada fecha.
     """
-    weights_list = get_weights()
-    phases_list  = get_phases()
+    weights_list = get_weights(user_id)
+    phases_list  = get_phases(user_id)
 
     weights_with_phase = []
     for w in weights_list:
@@ -66,12 +66,12 @@ def get_weights_with_phase() -> list[dict]:
     return weights_with_phase
 
 
-def update_phase(phase_data: dict) -> dict:
+def update_phase(user_id: int, phase_data: dict) -> dict:
     """
     Cierra la fase activa con la fecha de hoy e inicia una nueva.
     Devuelve ""closed old phase"" cuando se cierra la phase antigua.
     Devuelve "added" cuando se crea la nueva.
     """
-    close_result = close_phase(datetime.now().date())
-    insert_result = insert_phase(phase_data)
+    close_result = close_phase(datetime.now().date(), user_id)
+    insert_result = insert_phase(phase_data, user_id)
     return {"close": close_result, "insert": insert_result}
