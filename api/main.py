@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from services import update_phase, add_weight
+from services import update_phase, add_weight, get_weights_with_phase
 from db.queries import insert_user, get_user_by_email, get_weights, get_last_weight, get_active_phase, get_phases, get_reports, insert_report
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
 from api.schemas import UserInput, TokenResponse, WeightInput, PhaseInput, ReportInput
@@ -48,6 +48,11 @@ async def get_weights_ep(user_id: int = Depends(get_current_user_id)):
 @app.get("/weights/last")
 async def get_last_weight_ep(user_id: int = Depends(get_current_user_id)):
     return get_last_weight(user_id)
+
+
+@app.get("/weights/with-phase")
+async def get_weights_with_phase_ep(user_id: int = Depends(get_current_user_id)):
+    return get_weights_with_phase(user_id)
 
 
 @app.post("/weights")
