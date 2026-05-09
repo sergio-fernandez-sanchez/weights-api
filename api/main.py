@@ -4,7 +4,18 @@ from db.queries import insert_user, get_user_by_email, get_weights, get_last_wei
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
 from api.schemas import UserInput, TokenResponse, WeightInput, PhaseInput, ReportInput
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+# Midleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Auth
 @app.post("/auth/register")
