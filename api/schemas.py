@@ -33,6 +33,7 @@ class PhaseGoalsInput (BaseModel):
     date_goal: date | None = None
 
 class ReportInput(BaseModel):
+    date: date | None = None
     body_fat_pct: float | None = None
     skeletal_muscle_mass: float | None = None
     fat_free_mass: float | None = None

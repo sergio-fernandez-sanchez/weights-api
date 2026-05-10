@@ -242,7 +242,8 @@ def get_reports(user_id: int) -> list[dict]:
 
 def insert_report(report_data: dict, user_id: int) -> str:
     """
-    Inserta un nuevo registro en la tabla "reports" con la fecha de hoy.
+    Inserta un nuevo registro en la tabla "reports".
+    Si no se proporciona fecha, usa la fecha de hoy.
     """
     conn = get_connection()
     try:
@@ -254,7 +255,7 @@ def insert_report(report_data: dict, user_id: int) -> str:
                                     user_id)
                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
-                datetime.now().date(),
+                report_data.get("date") or datetime.now().date(),
                 report_data.get("body_fat_pct"),
                 report_data.get("skeletal_muscle_mass"),
                 report_data.get("fat_free_mass"),
