@@ -17,8 +17,7 @@ jobs:
       - name: Resume weights-api service
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway redeploy --service weights-api --environment production --yes
+        run: railway redeploy --service weights-api --yes
 
   sleep:
     if: github.event.schedule == '0 21 * * *'
@@ -30,5 +29,4 @@ jobs:
       - name: Pause weights-api service
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway down --service weights-api --environment production --yes
+        run: railway down --service weights-api --yes
