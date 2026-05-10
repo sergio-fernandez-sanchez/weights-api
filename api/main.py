@@ -2,9 +2,9 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from core.report_generator import generate_report
 from core.services import update_phase, add_weight, get_weights_with_phase
-from db.queries import insert_user, get_user_by_email, get_weights, get_last_weight, get_active_phase, get_phases, get_reports, insert_report
+from db.queries import insert_user, get_user_by_email, get_weights, get_last_weight, get_active_phase, get_phases, get_reports, insert_report, update_phase_goals
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
-from api.schemas import UserInput, TokenResponse, WeightInput, PhaseInput, ReportInput
+from api.schemas import UserInput, TokenResponse, WeightInput, PhaseInput, PhaseGoalsInput, ReportInput
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -68,6 +68,11 @@ async def post_weight_ep(data: WeightInput, user_id: int = Depends(get_current_u
 @app.get("/phases/active")
 async def get_active_phase_ep(user_id: int = Depends(get_current_user_id)):
     return get_active_phase(user_id)
+
+
+@app.patch("/phases/active")
+async def patch_goals_in_active_phase(data: PhaseGoalsInput, user_id: int = Depends(get_current_user_id)):
+    return update_phase_goals(data.weight_goal, data.date_goal, user_id)
 
 
 @app.get("/phases")

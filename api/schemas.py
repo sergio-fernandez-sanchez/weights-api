@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import date
 
 class UserInput(BaseModel):
     email: str
@@ -25,7 +26,11 @@ class PhaseOutput(BaseModel):
     end_date: str | None = None 
     phase_type: str
     weight_goal: float | None = None 
-    date_goal: str | None = None 
+    date_goal: str | None = None
+
+class PhaseGoalsInput (BaseModel):
+    weight_goal: float | None = None
+    date_goal: date | None = None
 
 class ReportInput(BaseModel):
     body_fat_pct: float | None = None

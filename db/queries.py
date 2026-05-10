@@ -199,6 +199,30 @@ def insert_phase(new_phase: dict, user_id: int) -> str:
         conn.close()
 
 
+def update_phase_goals(weight_goal: float, date_goal: date, user_id: int) -> str:
+    """
+    Actualiza el peso objetivo y la fecha objetivo de la fase activa del usuario.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            """
+            UPDATE phases
+            SET weight_goal = %s, date_goal = %s
+            WHERE user_id = %s AND end_date IS NULL
+            """,
+            (weight_goal, date_goal, user_id)
+        )
+        conn.commit()
+        return {"ok": True}
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
 # Reports
 
 def get_reports(user_id: int) -> list[dict]:
