@@ -180,15 +180,17 @@ def close_phase(end_date: date, user_id: int) -> str:
 
 def insert_phase(new_phase: dict, user_id: int) -> str:
     """
-    Inserta un nuevo registro en la tabla "phases" con la fecha de hoy.
+    Inserta un nuevo registro en la tabla "phases".
+    Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
     """
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        start_date = new_phase.get("start_date") or datetime.now().date()
         date_goal = datetime.strptime(new_phase["date_goal"], "%d/%m/%y").date() if new_phase.get("date_goal") else None
         cursor.execute("INSERT INTO phases (start_date, phase_type, weight_goal, date_goal, user_id) "
                        "VALUES (%s, %s, %s, %s, %s)",
-                       (datetime.now().date(), new_phase["phase_type"],
+                       (start_date, new_phase["phase_type"],
                         new_phase.get("weight_goal"), date_goal, user_id))
         conn.commit()
         return "added"

@@ -68,10 +68,10 @@ def get_weights_with_phase(user_id: int) -> list[dict]:
 
 def update_phase(user_id: int, phase_data: dict) -> dict:
     """
-    Cierra la fase activa con la fecha de hoy e inicia una nueva.
-    Devuelve ""closed old phase"" cuando se cierra la phase antigua.
-    Devuelve "added" cuando se crea la nueva.
+    Cierra la fase activa e inicia una nueva.
+    Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
     """
-    close_result = close_phase(datetime.now().date(), user_id)
+    start_date = phase_data.get("start_date") or datetime.now().date()
+    close_result = close_phase(start_date, user_id)
     insert_result = insert_phase(phase_data, user_id)
     return {"close": close_result, "insert": insert_result}

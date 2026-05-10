@@ -20,7 +20,8 @@ class WeightOutput(BaseModel):
 class PhaseInput(BaseModel):
     phase_type: str
     weight_goal: float | None = None 
-    date_goal: str | None = None 
+    date_goal: str | None = None
+    start_date: Optional[Date] = None
 
 class PhaseOutput(BaseModel):
     start_date: str
