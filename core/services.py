@@ -1,5 +1,15 @@
 from datetime import datetime, timedelta, date
-from db.queries import get_weight_on_date, update_weight, insert_weight, get_weights, get_phases, close_phase, insert_phase
+from db.queries import ( 
+    get_weight_on_date, 
+    update_weight, 
+    insert_weight, 
+    get_weights, 
+    get_phases, 
+    close_phase, 
+    insert_phase,
+    close_calories,
+    insert_calories
+)
 
 
 def add_weight(user_id: int, new_weight: dict) -> str:
@@ -68,10 +78,20 @@ def get_weights_with_phase(user_id: int) -> list[dict]:
 
 def update_phase(user_id: int, phase_data: dict) -> dict:
     """
-    Cierra la fase activa e inicia una nueva.
+    Cierra la fase de "phase" activa e inicia una nueva.
     Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
     """
     start_date = phase_data.get("start_date") or datetime.now().date()
     close_result = close_phase(start_date, user_id)
     insert_result = insert_phase(phase_data, user_id)
+    return {"close": close_result, "insert": insert_result}
+
+
+def update_calories(calories_data: dict, user_id: int) -> dict:
+    """
+    Cierra la fase de "calories" activa e inicia una nueva.
+    Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
+    """
+    close_result = close_calories(user_id)
+    insert_result = insert_calories(calories_data, user_id)
     return {"close": close_result, "insert": insert_result}

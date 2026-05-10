@@ -46,7 +46,7 @@ def insert_user(email: str, hashed_password: str) -> str:
 
 def get_weights(user_id: int) -> list[dict]:
     """
-    Hace una consulta SELECT y devuelve todos los datos de la tabla "weights"
+    Hace una consulta SELECT y devuelve todos los datos de la tabla "weights" del usuario.
     """
     conn = get_connection()
     try:
@@ -131,7 +131,7 @@ def update_weight(new_weight: float, user_id: int) -> str:
 
 def get_phases(user_id: int) -> list[dict]:
     """
-    Hace una consulta SELECT y devuelve todos los datos de la tabla "phases"
+    Hace una consulta SELECT y devuelve todos los datos de la tabla "phases" del usuario.
     """
     conn = get_connection()
     try:
@@ -276,6 +276,78 @@ def insert_report(report_data: dict, user_id: int) -> str:
         )
         conn.commit()
         return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+# Calories
+
+def get_calories(user_id: int) -> list[dict] | None:
+    """
+    Hace una consulta SELECT y devuelve todos los datos de la tabla "calories" del usuario.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM calories WHERE user_id = %s", (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def get_active_calories(user_id: int) -> dict | None:
+    """
+    Hace una consulta SELECT y devuelve el dato de la tabla "calories" que no tiene "end_date"
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM calories WHERE user_id = %s AND end_date IS NULL", (user_id,))
+        return cursor.fetchone()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_calories(new_calories: dict, user_id: int) -> str:
+    """
+    Inserta un nuevo registro en la tabla "calories".
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        start_date = datetime.now().date()
+        cursor.execute("INSERT INTO calories (start_date, calories, user_id) "
+                       "VALUES (%s, %s, %s)",
+                       (start_date, new_calories["calories"], user_id,))
+        conn.commit()
+        return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def close_calories(user_id: int) -> str:
+    """
+    Cierra el objetivo calórico activo poniendo end_date a hoy.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            "UPDATE calories SET end_date = %s WHERE user_id = %s AND end_date IS NULL",
+            (datetime.now().date(), user_id)
+        )
+        conn.commit()
+        return "closed"
     except Exception as e:
         conn.rollback()
         raise e

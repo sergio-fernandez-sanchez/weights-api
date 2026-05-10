@@ -65,3 +65,6 @@ class ReportOutput(BaseModel):
     bicep_cm: float | None = None
     hip_cm: float | None = None
     thigh_cm: float | None = None
+
+class CaloriesInput(BaseModel):
+    calories: int
