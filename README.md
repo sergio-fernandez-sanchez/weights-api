@@ -1,23 +1,19 @@
 # Weights API
 
-REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance) and nutritionist body composition reports. Includes JWT authentication with multi-user support.
+REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports and AI report generation. Includes JWT authentication with multi-user support.
 
 Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain time) to stay within the free tier.
 
-Part of the [Weights](https://github.com/sergio-fernandez-sanchez/Weights-Desktop) project ecosystem.
+Part of the [Weights](https://github.com/sergio-fernandez-sanchez/weights-client) project ecosystem.
 
-----
+---
 
 ## Demo account
-
-A demo account is available with 2+ years of realistic data pre-loaded:
 
 | Field | Value |
 |---|---|
 | Email | demo@gmail.com |
 | Password | 1234 |
-
-Log in at `POST /auth/login` to get a token and explore all endpoints with real data.
 
 ---
 
@@ -34,6 +30,7 @@ Log in at `POST /auth/login` to get a token and explore all endpoints with real 
 |---|---|---|
 | GET | `/weights` | Get all weight records |
 | GET | `/weights/last` | Get the most recent weight record |
+| GET | `/weights/with-phase` | Get all weights with their phase type |
 | POST | `/weights` | Add or update today's weight |
 
 ### Phases
@@ -49,6 +46,11 @@ Log in at `POST /auth/login` to get a token and explore all endpoints with real 
 | GET | `/reports` | Get all nutritionist reports |
 | POST | `/reports` | Add a new nutritionist report |
 
+### AI Report
+| Method | Route | Description |
+|---|---|---|
+| GET | `/generate-report` | Generate a full text report ready for AI analysis |
+
 All endpoints except `/auth/register` and `/auth/login` require a valid JWT token in the `Authorization: Bearer <token>` header.
 
 ---
@@ -57,8 +59,9 @@ All endpoints except `/auth/register` and `/auth/login` require a valid JWT toke
 
 ```
 weights-api/
-├── services.py              # Business logic
-├── report_generator.py      # AI report text generation
+├── core/
+│   ├── services.py          # Business logic
+│   └── report_generator.py  # AI report text generation
 ├── db/
 │   ├── database.py          # PostgreSQL connection
 │   └── queries.py           # SQL queries
@@ -69,6 +72,7 @@ weights-api/
 ├── .github/
 │   └── workflows/
 │       └── schedule.yml     # Auto pause/resume Railway service
+├── Procfile                 # Railway start command
 └── requirements.txt
 ```
 
@@ -170,7 +174,7 @@ JWT_EXPIRE_MINUTES=1440
 uvicorn api.main:app --reload
 ```
 
-API available at `http://localhost:8000`.  
+API available at `http://localhost:8000`.
 Interactive docs at `http://localhost:8000/docs`.
 
 ---
