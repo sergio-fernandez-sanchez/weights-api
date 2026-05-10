@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
-from services import update_phase, add_weight, get_weights_with_phase
+from fastapi.responses import PlainTextResponse
+from core.report_generator import generate_report
+from core.services import update_phase, add_weight, get_weights_with_phase
 from db.queries import insert_user, get_user_by_email, get_weights, get_last_weight, get_active_phase, get_phases, get_reports, insert_report
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
 from api.schemas import UserInput, TokenResponse, WeightInput, PhaseInput, ReportInput
@@ -13,7 +15,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173",
                    "http://localhost:5174",
-                   "https://weights-client-production.up.railway.app",],
+                   "https://weights.up.railway.app",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,3 +89,9 @@ async def get_reports_ep(user_id: int = Depends(get_current_user_id)):
 @app.post("/reports")
 async def post_report_ep(data: ReportInput, user_id: int = Depends(get_current_user_id)):
     return insert_report(data.model_dump(), user_id)
+
+
+# AI Report Generator
+@app.get("/generate-report")
+async def get_ai_report(user_id: int = Depends(get_current_user_id)):
+    return PlainTextResponse(generate_report(user_id))
