@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
+from typing import Optional
 
 class UserInput(BaseModel):
     email: str
@@ -28,9 +29,9 @@ class PhaseOutput(BaseModel):
     weight_goal: float | None = None 
     date_goal: str | None = None
 
-class PhaseGoalsInput (BaseModel):
-    weight_goal: float | None = None
-    date_goal: date | None = None
+class PhaseGoalsInput(BaseModel):
+    weight_goal: Optional[float] = None
+    date_goal: Optional[date] = None
 
 class ReportInput(BaseModel):
     date: date | None = None
