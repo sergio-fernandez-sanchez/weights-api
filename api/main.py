@@ -11,7 +11,9 @@ app = FastAPI()
 # Midleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_origins=["http://localhost:5173",
+                   "http://localhost:5174",
+                   "https://weights-client-production.up.railway.app",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
