@@ -3,8 +3,14 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from core.report_generator import generate_report
-from core.services import update_phase, add_weight, get_weights_with_phase, update_calories, update_gym_log
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
+from core.services import (
+    update_phase,
+    add_weight,
+    get_weights_with_phase,
+    update_calories,
+    update_gym_log
+)
 from api.schemas import ( 
     UserInput, 
     TokenResponse, 
