@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
-from core.report_generator import generate_report
+from core.report_generator import generate_report, generate_raw_report
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
 from core.services import (
     update_phase,
@@ -190,3 +190,8 @@ async def patch_gym_log_ep(log_id: int, data: GymLogInput, user_id: int = Depend
 @app.get("/generate-report")
 async def get_ai_report_ep(user_id: int = Depends(get_current_user_id)):
     return PlainTextResponse(generate_report(user_id))
+
+
+@app.get("/generate-report/raw")
+async def get_raw_report_ep(user_id: int = Depends(get_current_user_id)):
+    return PlainTextResponse(generate_raw_report(user_id))
