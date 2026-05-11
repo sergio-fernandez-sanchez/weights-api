@@ -1,6 +1,6 @@
 # Weights API
 
-REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports, calorie targets and AI report generation. Includes JWT authentication with multi-user support.
+REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports, calorie targets, gym performance tracking and AI report generation. Includes JWT authentication with multi-user support.
 
 Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain time) to stay within the free tier.
 
@@ -38,7 +38,7 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 |---|---|---|
 | GET | `/phases` | Get all training phases |
 | GET | `/phases/active` | Get the current active phase |
-| POST | `/phases` | Close current phase and start a new one |
+| POST | `/phases` | Close current phase and start a new one (optional start date) |
 | PATCH | `/phases/active` | Update weight goal and date goal of the active phase |
 
 ### Reports
@@ -54,10 +54,22 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 | GET | `/calories/active` | Get current calorie target |
 | POST | `/calories` | Close current target and set a new one |
 
-### AI Report
+### Gym
 | Method | Route | Description |
 |---|---|---|
-| GET | `/generate-report` | Generate a full text report ready for AI analysis |
+| GET | `/gym/exercise-types` | Get all available exercise types (global + user custom) |
+| POST | `/gym/exercise-types` | Create a custom exercise type |
+| GET | `/gym/logs` | Get full gym log history with exercise names |
+| GET | `/gym/logs/active` | Get active gym logs (no end date) with exercise names |
+| POST | `/gym/logs` | Add a new gym log entry |
+| PATCH | `/gym/logs/{log_id}` | Close current log and insert updated one |
+| DELETE | `/gym/logs/{log_id}` | Close a gym log (set end date to today) |
+
+### AI Reports
+| Method | Route | Description |
+|---|---|---|
+| GET | `/generate-report` | Generate optimized report for AI analysis (weekly averages for past phases, all records for active phase, calories, gym with strength % per phase) |
+| GET | `/generate-report/raw` | Generate full raw data report (all weight records, calories, gym history, nutritionist measurements) |
 
 All endpoints except `/auth/register` and `/auth/login` require a valid JWT token in the `Authorization: Bearer <token>` header.
 
@@ -69,7 +81,7 @@ All endpoints except `/auth/register` and `/auth/login` require a valid JWT toke
 weights-api/
 ├── core/
 │   ├── services.py          # Business logic
-│   └── report_generator.py  # AI report text generation
+│   └── report_generator.py  # AI report text generation (two report types)
 ├── db/
 │   ├── database.py          # PostgreSQL connection
 │   └── queries.py           # SQL queries
@@ -164,10 +176,28 @@ CREATE TABLE calories (
     user_id INTEGER REFERENCES users(id)
 );
 
+CREATE TABLE exercise_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50),
+    user_id INTEGER NULL REFERENCES users(id)
+);
+
+CREATE TABLE gym_logs (
+    id SERIAL PRIMARY KEY,
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    exercise_type_id INTEGER REFERENCES exercise_types(id),
+    weight NUMERIC(5,2) NULL,
+    reps INTEGER NULL,
+    user_id INTEGER REFERENCES users(id)
+);
+
 CREATE INDEX idx_weights_user_date ON weights(user_id, date);
 CREATE INDEX idx_phases_user_date ON phases(user_id, start_date);
 CREATE INDEX idx_reports_user_date ON reports(user_id, date);
 CREATE INDEX idx_calories_user_date ON calories(user_id, start_date);
+CREATE INDEX idx_gym_logs_user ON gym_logs(user_id, start_date);
 ```
 
 **5. Configure environment variables**
