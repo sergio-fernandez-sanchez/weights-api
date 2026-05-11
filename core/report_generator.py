@@ -3,12 +3,19 @@ from db.queries import get_weights, get_phases, get_reports, get_calories, get_g
 
 
 def fmt(d):
-    """Formatea un objeto date o None a string dd/mm/yy."""
     return d.strftime("%d/%m/%y") if d else "—"
 
 
+def volume(log):
+    """Calcula el volumen de un log: peso * reps si hay reps, peso si no."""
+    if log["weight"] and log["reps"]:
+        return float(log["weight"]) * int(log["reps"])
+    elif log["weight"]:
+        return float(log["weight"])
+    return None
+
+
 def weekly_averages(weights_sorted):
-    """Agrupa pesos por semana y devuelve la media de cada semana."""
     by_week = {}
     for w in weights_sorted:
         d = w["date"]
@@ -26,10 +33,6 @@ def weekly_averages(weights_sorted):
 
 
 def calc_strength_by_phase(gym_logs, phases):
-    """
-    Para cada fase calcula el % de cambio de fuerza en cada ejercicio
-    y la media total. Devuelve dict {phase_id: {avg, exercises}}
-    """
     results = {}
     for phase in phases:
         phase_start = phase["start_date"]
@@ -71,13 +74,21 @@ def calc_strength_by_phase(gym_logs, phases):
             if base["id"] == last_during["id"]:
                 continue
 
-            pct = ((float(last_during["weight"]) - float(base["weight"])) / float(base["weight"])) * 100
+            vol_base    = volume(base)
+            vol_current = volume(last_during)
+
+            if not vol_base or not vol_current:
+                continue
+
+            pct = ((vol_current - vol_base) / vol_base) * 100
             changes.append({
                 "name": data["name"],
                 "pct": pct,
                 "base": float(base["weight"]),
+                "base_reps": base["reps"],
                 "base_date": base["start_date"],
                 "current": float(last_during["weight"]),
+                "current_reps": last_during["reps"],
                 "current_date": last_during["start_date"],
             })
 
@@ -88,8 +99,14 @@ def calc_strength_by_phase(gym_logs, phases):
     return results
 
 
-def gym_section(gym_logs, include_dates=True):
-    """Genera la sección de gym con historial por ejercicio."""
+def fmt_log(log_dict):
+    """Formatea peso y reps de un log para mostrar en informe."""
+    w = f"{log_dict['weight']:.1f}kg"
+    r = f" x {log_dict['reps']} reps/serie" if log_dict.get("reps") else ""
+    return f"{w}{r}"
+
+
+def gym_section(gym_logs):
     lines = []
     by_exercise = {}
     for log in gym_logs:
@@ -103,10 +120,7 @@ def gym_section(gym_logs, include_dates=True):
         for log in sorted(data["logs"], key=lambda l: l["start_date"]):
             peso = f"{log['weight']} kg" if log["weight"] else "sin peso"
             reps = f" x {log['reps']} reps/serie" if log["reps"] else ""
-            if include_dates:
-                lines.append(f"    {fmt(log['start_date'])} -> {fmt(log['end_date'])}  |  {peso}{reps}")
-            else:
-                lines.append(f"    {peso}{reps}  ({fmt(log['start_date'])} -> {fmt(log['end_date'])})")
+            lines.append(f"    {fmt(log['start_date'])} -> {fmt(log['end_date'])}  |  {peso}{reps}")
         lines.append("")
     return lines
 
@@ -136,19 +150,19 @@ def generate_report(user_id: int) -> str:
     r.append("=" * 60)
     r.append("")
 
-    # ── Fases ─────────────────────────────────────────────────────────────────
     r.append("-- FASES --")
     for phase in phases_sorted:
         estado = "ACTIVA" if phase["end_date"] is None else "FINALIZADA"
         r.append(f" {fmt(phase['start_date'])} -> {fmt(phase['end_date'])}  |  {phase['phase_type'].upper()}  |  [{estado}]")
         if phase["id"] in strength_by_phase:
             s = strength_by_phase[phase["id"]]
-            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media")
+            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media (volumen peso×reps)")
             for ex in s["exercises"]:
-                r.append(f"     {ex['name']}: {fmt(ex['base_date'])} {ex['base']:.1f}kg -> {fmt(ex['current_date'])} {ex['current']:.1f}kg  ({ex['pct']:+.1f}%)")
+                base_str    = fmt_log({"weight": ex["base"],    "reps": ex["base_reps"]})
+                current_str = fmt_log({"weight": ex["current"], "reps": ex["current_reps"]})
+                r.append(f"     {ex['name']}: {fmt(ex['base_date'])} {base_str} -> {fmt(ex['current_date'])} {current_str}  ({ex['pct']:+.1f}%)")
         r.append("")
 
-    # ── Pesos ─────────────────────────────────────────────────────────────────
     r.append("-- PESOS --")
     if weights_sorted:
         r.append(f"  Primer registro: {fmt(weights_sorted[0]['date'])}  {weights_sorted[0]['weight']} kg")
@@ -166,11 +180,9 @@ def generate_report(user_id: int) -> str:
     if active_start:
         r.append("")
         r.append(f"-- PESOS FASE ACTIVA (desde {fmt(active_start)}) --")
-        active_weights = [w for w in weights_sorted if w["date"] >= active_start]
-        for w in active_weights:
+        for w in [w for w in weights_sorted if w["date"] >= active_start]:
             r.append(f"  {fmt(w['date'])}  ->  {w['weight']} kg")
 
-    # ── Calorías ──────────────────────────────────────────────────────────────
     r.append("")
     r.append("-- HISTORIAL DE CALORÍAS --")
     calories_sorted = sorted(calories_data, key=lambda c: c["start_date"])
@@ -181,12 +193,10 @@ def generate_report(user_id: int) -> str:
     else:
         r.append("  sin registros")
 
-    # ── Gym ───────────────────────────────────────────────────────────────────
     r.append("")
     r.append("-- HISTORIAL DE GYM --")
     r.extend(gym_section(gym_logs))
 
-    # ── Informes nutricionista ────────────────────────────────────────────────
     r.append("-- MEDICIONES DEL NUTRICIONISTA --")
     for row in sorted(reports_data, key=lambda x: x["date"]):
         r.append(f"Fecha: {fmt(row['date'])}")
@@ -232,19 +242,19 @@ def generate_raw_report(user_id: int) -> str:
     r.append("=" * 60)
     r.append("")
 
-    # ── Fases ─────────────────────────────────────────────────────────────────
     r.append("-- FASES --")
     for phase in phases_sorted:
         estado = "ACTIVA" if phase["end_date"] is None else "FINALIZADA"
         r.append(f" {fmt(phase['start_date'])} -> {fmt(phase['end_date'])}  |  {phase['phase_type'].upper()}  |  [{estado}]")
         if phase["id"] in strength_by_phase:
             s = strength_by_phase[phase["id"]]
-            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media")
+            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media (volumen peso×reps)")
             for ex in s["exercises"]:
-                r.append(f"     {ex['name']}: {fmt(ex['base_date'])} {ex['base']:.1f}kg -> {fmt(ex['current_date'])} {ex['current']:.1f}kg  ({ex['pct']:+.1f}%)")
+                base_str    = fmt_log({"weight": ex["base"],    "reps": ex["base_reps"]})
+                current_str = fmt_log({"weight": ex["current"], "reps": ex["current_reps"]})
+                r.append(f"     {ex['name']}: {fmt(ex['base_date'])} {base_str} -> {fmt(ex['current_date'])} {current_str}  ({ex['pct']:+.1f}%)")
         r.append("")
 
-    # ── Pesos ─────────────────────────────────────────────────────────────────
     r.append("-- PESOS --")
     if weights_sorted:
         r.append(f"  Total registros: {len(weights_sorted)}")
@@ -254,7 +264,6 @@ def generate_raw_report(user_id: int) -> str:
     for w in weights_sorted:
         r.append(f"  {fmt(w['date'])}  ->  {w['weight']} kg")
 
-    # ── Calorías ──────────────────────────────────────────────────────────────
     r.append("")
     r.append("-- HISTORIAL DE CALORÍAS --")
     calories_sorted = sorted(calories_data, key=lambda c: c["start_date"])
@@ -265,12 +274,10 @@ def generate_raw_report(user_id: int) -> str:
     else:
         r.append("  sin registros")
 
-    # ── Gym ───────────────────────────────────────────────────────────────────
     r.append("")
     r.append("-- HISTORIAL DE GYM --")
     r.extend(gym_section(gym_logs))
 
-    # ── Informes nutricionista ────────────────────────────────────────────────
     r.append("-- MEDICIONES DEL NUTRICIONISTA --")
     for row in sorted(reports_data, key=lambda x: x["date"]):
         r.append(f"Fecha: {fmt(row['date'])}")
