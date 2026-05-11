@@ -167,14 +167,14 @@ async def get_active_gym_logs_ep(user_id: int = Depends(get_current_user_id)):
     return get_active_gym_logs(user_id)
 
 
+@app.get("/gym/logs")
+async def get_gym_logs_ep(user_id: int = Depends(get_current_user_id)):
+    return get_gym_logs(user_id)
+
+
 @app.post("/gym/logs")
 async def post_gym_logs_ep(data: GymLogInput, user_id: int = Depends(get_current_user_id)):
     return insert_gym_log(user_id, data.model_dump())
-
-
-@app.post("/gym/logs")
-async def post_gym_logs_ep(data: GymLogInput, user_id: int = Depends(get_current_user_id)):
-    return update_gym_log(user_id, data.model_dump())
 
 
 @app.delete("/gym/logs/{log_id}")
