@@ -59,7 +59,7 @@ def get_weights(user_id: int) -> list[dict]:
         conn.close()
 
 
-def get_weight_on_date(target_date: date, user_id: int) -> dict | None:
+def get_weight_on_date(user_id: int, target_date: date) -> dict | None:
     """
     Hace una consulta SELECT y devuelve el diccionario de la tabla "weights" de la fecha indicada
     """
@@ -91,7 +91,7 @@ def get_last_weight(user_id: int) -> dict | None:
         conn.close()
 
 
-def insert_weight(new_weight: float, user_id: int) -> str:
+def insert_weight(user_id: int, new_weight: float) -> str:
     """
     Inserta un nuevo registro en la tabla "weights" con la fecha de hoy.
     """
@@ -109,7 +109,7 @@ def insert_weight(new_weight: float, user_id: int) -> str:
         conn.close()
 
 
-def update_weight(new_weight: float, user_id: int) -> str:
+def update_weight(user_id: int, new_weight: float) -> str:
     """
     Actualiza el ultimo registro de peso con la fecha de hoy.
     """
@@ -160,9 +160,9 @@ def get_active_phase(user_id: int) -> dict | None:
         conn.close()
 
 
-def close_phase(end_date: date, user_id: int) -> str:
+def close_phase(user_id: int, end_date: date) -> str:
     """
-    Actualiza el "end_date" de la ultima fila.
+    Actualiza el "end_date" de la ultima fila en la tabla "phases".
     """
     conn = get_connection()
     try:
@@ -178,7 +178,7 @@ def close_phase(end_date: date, user_id: int) -> str:
         conn.close()
 
 
-def insert_phase(new_phase: dict, user_id: int) -> str:
+def insert_phase(user_id: int, new_phase: dict) -> str:
     """
     Inserta un nuevo registro en la tabla "phases".
     Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
@@ -201,7 +201,7 @@ def insert_phase(new_phase: dict, user_id: int) -> str:
         conn.close()
 
 
-def update_phase_goals(weight_goal: float, date_goal: date, user_id: int) -> str:
+def update_phase_goals(user_id: int, new_phase_goals: dict) -> str:
     """
     Actualiza el peso objetivo y la fecha objetivo de la fase activa del usuario.
     """
@@ -214,7 +214,7 @@ def update_phase_goals(weight_goal: float, date_goal: date, user_id: int) -> str
             SET weight_goal = %s, date_goal = %s
             WHERE user_id = %s AND end_date IS NULL
             """,
-            (weight_goal, date_goal, user_id)
+            (new_phase_goals["weight_goal"], new_phase_goals["date_goal"], user_id)
         )
         conn.commit()
         return {"ok": True}
@@ -242,7 +242,7 @@ def get_reports(user_id: int) -> list[dict]:
         conn.close()
 
 
-def insert_report(report_data: dict, user_id: int) -> str:
+def insert_report(user_id: int, report_data: dict) -> str:
     """
     Inserta un nuevo registro en la tabla "reports".
     Si no se proporciona fecha, usa la fecha de hoy.
@@ -285,7 +285,7 @@ def insert_report(report_data: dict, user_id: int) -> str:
 
 # Calories
 
-def get_calories(user_id: int) -> list[dict] | None:
+def get_calories(user_id: int) -> list[dict]:
     """
     Hace una consulta SELECT y devuelve todos los datos de la tabla "calories" del usuario.
     """
@@ -315,7 +315,7 @@ def get_active_calories(user_id: int) -> dict | None:
         conn.close()
 
 
-def insert_calories(new_calories: dict, user_id: int) -> str:
+def insert_calories(user_id: int, new_calories: dict) -> str:
     """
     Inserta un nuevo registro en la tabla "calories".
     """
@@ -350,6 +350,128 @@ def close_calories(user_id: int) -> str:
         return "closed"
     except Exception as e:
         conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+# Exercise types
+
+def get_exercise_type(user_id: int) -> list[dict]:
+    """
+    Hace una consulta SELECT y devuelve todos los datos de la tabla "exercise_types" del usuario.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            "SELECT * FROM exercise_types WHERE user_id IS NULL OR user_id = %s ORDER BY category, name",
+            (user_id,)
+        )
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_exercise_type(user_id: int, new_exercise_type: dict):
+    """
+    Inserta un nuevo registro en la tabla "exercise_types".
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("INSERT INTO exercise_types (name, category, user_id) "
+                       "VALUES (%s, %s, %s)",
+                       (new_exercise_type["name"], new_exercise_type["category"], user_id,))
+        conn.commit()
+        return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+
+# Gym logs
+
+def get_gym_logs(user_id: int) -> list[dict]:
+    """
+    Hace una consulta SELECT y devuelve todos los datos de la tabla "gym_logs" del usuario.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM gym_logs WHERE user_id = %s", (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_gym_log(user_id: int, log_data: dict) -> str:
+    """
+    Inserta un nuevo registro en la tabla "gym_logs".
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            "INSERT INTO gym_logs (start_date, exercise_type_id, weight, reps, user_id) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (datetime.now().date(), log_data["exercise_type_id"],
+             log_data.get("weight"), log_data.get("reps"), user_id)
+        )
+        conn.commit()
+        return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def close_gym_log(user_id: int, log_id: int, end_date: date) -> str:
+    """
+    Pone end_date en el gym_log con el id indicado.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            "UPDATE gym_logs SET end_date = %s WHERE id = %s AND user_id = %s",
+            (end_date, log_id, user_id)
+        )
+        conn.commit()
+        return "closed"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def get_active_gym_logs(user_id: int) -> list[dict]:
+    """
+    Devuelve todos los gym_logs activos del usuario (sin end_date),
+    con el nombre y categoría del ejercicio incluidos.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            SELECT gl.id, gl.start_date, gl.weight, gl.reps, gl.user_id,
+                   et.id as exercise_type_id, et.name, et.category
+            FROM gym_logs gl
+            JOIN exercise_types et ON gl.exercise_type_id = et.id
+            WHERE gl.user_id = %s AND gl.end_date IS NULL
+            ORDER BY et.category, et.name
+        """, (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
         raise e
     finally:
         conn.close()

@@ -68,3 +68,12 @@ class ReportOutput(BaseModel):
 
 class CaloriesInput(BaseModel):
     calories: int
+
+class GymLogInput(BaseModel):
+    exercise_type_id: int
+    weight: Optional[float] = None
+    reps: Optional[int] = None
+
+class ExerciseTypeInput(BaseModel):
+    name: str
+    category: str = 'custom'

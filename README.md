@@ -1,10 +1,10 @@
 # Weights API
 
-REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports and AI report generation. Includes JWT authentication with multi-user support.
+REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports, calorie targets and AI report generation. Includes JWT authentication with multi-user support.
 
 Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain time) to stay within the free tier.
 
-Part of the [Weights](https://github.com/sergio-fernandez-sanchez/weights-client) project ecosystem.
+Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights-client) project ecosystem.
 
 ---
 
@@ -39,12 +39,20 @@ Part of the [Weights](https://github.com/sergio-fernandez-sanchez/weights-client
 | GET | `/phases` | Get all training phases |
 | GET | `/phases/active` | Get the current active phase |
 | POST | `/phases` | Close current phase and start a new one |
+| PATCH | `/phases/active` | Update weight goal and date goal of the active phase |
 
 ### Reports
 | Method | Route | Description |
 |---|---|---|
 | GET | `/reports` | Get all nutritionist reports |
-| POST | `/reports` | Add a new nutritionist report |
+| POST | `/reports` | Add a new nutritionist report (optional date) |
+
+### Calories
+| Method | Route | Description |
+|---|---|---|
+| GET | `/calories` | Get full calorie target history |
+| GET | `/calories/active` | Get current calorie target |
+| POST | `/calories` | Close current target and set a new one |
 
 ### AI Report
 | Method | Route | Description |
@@ -148,9 +156,18 @@ CREATE TABLE reports (
     user_id INTEGER REFERENCES users(id)
 );
 
+CREATE TABLE calories (
+    id SERIAL PRIMARY KEY,
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    calories INTEGER NOT NULL,
+    user_id INTEGER REFERENCES users(id)
+);
+
 CREATE INDEX idx_weights_user_date ON weights(user_id, date);
 CREATE INDEX idx_phases_user_date ON phases(user_id, start_date);
 CREATE INDEX idx_reports_user_date ON reports(user_id, date);
+CREATE INDEX idx_calories_user_date ON calories(user_id, start_date);
 ```
 
 **5. Configure environment variables**

@@ -8,7 +8,9 @@ from db.queries import (
     close_phase, 
     insert_phase,
     close_calories,
-    insert_calories
+    insert_calories,
+    close_gym_log,
+    insert_gym_log
 )
 
 
@@ -82,16 +84,25 @@ def update_phase(user_id: int, phase_data: dict) -> dict:
     Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
     """
     start_date = phase_data.get("start_date") or datetime.now().date()
-    close_result = close_phase(start_date, user_id)
-    insert_result = insert_phase(phase_data, user_id)
+    close_result = close_phase(user_id, start_date)
+    insert_result = insert_phase(user_id, phase_data)
     return {"close": close_result, "insert": insert_result}
 
 
-def update_calories(calories_data: dict, user_id: int) -> dict:
+def update_calories(user_id: int, calories_data: dict) -> dict:
     """
     Cierra la fase de "calories" activa e inicia una nueva.
     Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
     """
     close_result = close_calories(user_id)
-    insert_result = insert_calories(calories_data, user_id)
+    insert_result = insert_calories(user_id, calories_data)
+    return {"close": close_result, "insert": insert_result}
+
+
+def update_gym_log(user_id: int, log_id: int, log_data: dict) -> dict:
+    """
+    Cierra el gym_log con el id indicado e inserta uno nuevo con los datos actualizados.
+    """
+    close_result = close_gym_log(user_id, log_id, datetime.now().date())
+    insert_result = insert_gym_log(user_id, log_data)
     return {"close": close_result, "insert": insert_result}

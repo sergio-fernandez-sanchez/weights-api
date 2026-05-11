@@ -1,8 +1,9 @@
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from core.report_generator import generate_report
-from core.services import update_phase, add_weight, get_weights_with_phase, update_calories
+from core.services import update_phase, add_weight, get_weights_with_phase, update_calories, update_gym_log
 from api.auth import hash_password, verify_password, create_token, get_current_user_id
 from api.schemas import ( 
     UserInput, 
@@ -11,7 +12,9 @@ from api.schemas import (
     PhaseInput, 
     PhaseGoalsInput, 
     ReportInput, 
-    CaloriesInput 
+    CaloriesInput,
+    GymLogInput,
+    ExerciseTypeInput
 )
 from db.queries import (
     insert_user,
@@ -25,8 +28,12 @@ from db.queries import (
     update_phase_goals,
     get_calories,
     get_active_calories,
-    insert_calories,
-    close_calories,
+    get_exercise_type,
+    insert_exercise_type,
+    get_active_gym_logs,
+    close_gym_log,
+    insert_gym_log
+    
 )
 
 app = FastAPI()
@@ -92,8 +99,8 @@ async def get_active_phase_ep(user_id: int = Depends(get_current_user_id)):
 
 
 @app.patch("/phases/active")
-async def patch_goals_in_active_phase(data: PhaseGoalsInput, user_id: int = Depends(get_current_user_id)):
-    return update_phase_goals(data.weight_goal, data.date_goal, user_id)
+async def patch_goals_in_active_phase_ep(data: PhaseGoalsInput, user_id: int = Depends(get_current_user_id)):
+    return update_phase_goals(user_id, data.model_dump())
 
 
 @app.get("/phases")
@@ -114,7 +121,7 @@ async def get_reports_ep(user_id: int = Depends(get_current_user_id)):
 
 @app.post("/reports")
 async def post_report_ep(data: ReportInput, user_id: int = Depends(get_current_user_id)):
-    return insert_report(data.model_dump(), user_id)
+    return insert_report(user_id, data.model_dump())
 
 
 # Calories
@@ -131,10 +138,48 @@ async def get_calories_ep(user_id: int = Depends(get_current_user_id)):
 
 @app.post("/calories")
 async def post_calories_ep(data: CaloriesInput, user_id: int = Depends(get_current_user_id)):
-    return update_calories(data.model_dump(), user_id)
+    return update_calories(user_id, data.model_dump())
+
+
+# Exercise types
+
+@app.get("/gym/exercise-types")
+async def get_exercise_types_ep(user_id: int = Depends(get_current_user_id)):
+    return get_exercise_type(user_id)
+
+
+@app.post("/gym/exercise-types")
+async def post_exercise_types_ep(data: ExerciseTypeInput, user_id: int = Depends(get_current_user_id)):
+    return insert_exercise_type(user_id, data.model_dump())
+
+
+# Gym logs
+
+@app.get("/gym/logs/active")
+async def get_active_gym_logs_ep(user_id: int = Depends(get_current_user_id)):
+    return get_active_gym_logs(user_id)
+
+
+@app.post("/gym/logs")
+async def post_gym_logs_ep(data: GymLogInput, user_id: int = Depends(get_current_user_id)):
+    return insert_gym_log(user_id, data.model_dump())
+
+
+@app.post("/gym/logs")
+async def post_gym_logs_ep(data: GymLogInput, user_id: int = Depends(get_current_user_id)):
+    return update_gym_log(user_id, data.model_dump())
+
+
+@app.delete("/gym/logs/{log_id}")
+async def delete_gym_log_ep(log_id: int, user_id: int = Depends(get_current_user_id)):
+    return close_gym_log(user_id, log_id, datetime.now().date())
+
+@app.patch("/gym/logs/{log_id}")
+async def patch_gym_log_ep(log_id: int, data: GymLogInput, user_id: int = Depends(get_current_user_id)):
+    return update_gym_log(user_id, log_id, data.model_dump())
 
 
 # AI Report Generator
 @app.get("/generate-report")
-async def get_ai_report(user_id: int = Depends(get_current_user_id)):
+async def get_ai_report_ep(user_id: int = Depends(get_current_user_id)):
     return PlainTextResponse(generate_report(user_id))
