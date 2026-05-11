@@ -13,10 +13,9 @@ def weekly_averages(weights_sorted):
     for w in weights_sorted:
         d = w["date"]
         monday = d - timedelta(days=d.weekday())
-        key = monday
-        if key not in by_week:
-            by_week[key] = []
-        by_week[key].append(float(w["weight"]))
+        if monday not in by_week:
+            by_week[monday] = []
+        by_week[monday].append(float(w["weight"]))
     result = []
     for monday in sorted(by_week.keys()):
         vals = by_week[monday]
@@ -29,21 +28,19 @@ def weekly_averages(weights_sorted):
 def calc_strength_by_phase(gym_logs, phases):
     """
     Para cada fase calcula el % de cambio de fuerza en cada ejercicio
-    y la media total. Devuelve dict {phase_id: {avg, exercises: [{name, pct}]}}
+    y la media total. Devuelve dict {phase_id: {avg, exercises}}
     """
     results = {}
     for phase in phases:
         phase_start = phase["start_date"]
-        phase_end = phase["end_date"] or datetime.now().date()
+        phase_end   = phase["end_date"] or datetime.now().date()
 
-        # Agrupar gym_logs por ejercicio dentro de esta fase
         by_exercise = {}
         for log in gym_logs:
             if not log["weight"]:
                 continue
             log_start = log["start_date"]
-            log_end = log["end_date"] or datetime.now().date()
-            # El log se solapa con la fase
+            log_end   = log["end_date"] or datetime.now().date()
             if log_start <= phase_end and log_end >= phase_start:
                 eid = log["exercise_type_id"]
                 if eid not in by_exercise:
@@ -52,15 +49,12 @@ def calc_strength_by_phase(gym_logs, phases):
 
         changes = []
         for eid, data in by_exercise.items():
-            logs_sorted = sorted(data["logs"], key=lambda l: l["start_date"])
-
-            # Buscar el peso base: último log que empieza ANTES de la fase
             all_logs_exercise = sorted(
                 [l for l in gym_logs if l["exercise_type_id"] == eid and l["weight"]],
                 key=lambda l: l["start_date"]
             )
             before_phase = [l for l in all_logs_exercise if l["start_date"] < phase_start]
-            during_phase = [l for l in all_logs_exercise if l["start_date"] >= phase_start and l["start_date"] <= phase_end]
+            during_phase = [l for l in all_logs_exercise if phase_start <= l["start_date"] <= phase_end]
 
             if not during_phase:
                 continue
@@ -78,14 +72,43 @@ def calc_strength_by_phase(gym_logs, phases):
                 continue
 
             pct = ((float(last_during["weight"]) - float(base["weight"])) / float(base["weight"])) * 100
-            changes.append({"name": data["name"], "pct": pct,
-                             "base": float(base["weight"]), "current": float(last_during["weight"])})
+            changes.append({
+                "name": data["name"],
+                "pct": pct,
+                "base": float(base["weight"]),
+                "base_date": base["start_date"],
+                "current": float(last_during["weight"]),
+                "current_date": last_during["start_date"],
+            })
 
         if changes:
             avg = sum(c["pct"] for c in changes) / len(changes)
             results[phase["id"]] = {"avg": avg, "exercises": changes}
 
     return results
+
+
+def gym_section(gym_logs, include_dates=True):
+    """Genera la sección de gym con historial por ejercicio."""
+    lines = []
+    by_exercise = {}
+    for log in gym_logs:
+        eid = log["exercise_type_id"]
+        if eid not in by_exercise:
+            by_exercise[eid] = {"name": log["name"], "logs": []}
+        by_exercise[eid]["logs"].append(log)
+
+    for eid, data in by_exercise.items():
+        lines.append(f"  {data['name'].upper()}:")
+        for log in sorted(data["logs"], key=lambda l: l["start_date"]):
+            peso = f"{log['weight']} kg" if log["weight"] else "sin peso"
+            reps = f" x {log['reps']} reps/serie" if log["reps"] else ""
+            if include_dates:
+                lines.append(f"    {fmt(log['start_date'])} -> {fmt(log['end_date'])}  |  {peso}{reps}")
+            else:
+                lines.append(f"    {peso}{reps}  ({fmt(log['start_date'])} -> {fmt(log['end_date'])})")
+        lines.append("")
+    return lines
 
 
 # ── Informe 1: Para IA (optimizado) ──────────────────────────────────────────
@@ -97,11 +120,10 @@ def generate_report(user_id: int) -> str:
     calories_data = get_calories(user_id)
     gym_logs      = get_gym_logs(user_id)
 
-    current_date = datetime.now().strftime("%d/%m/%y")
+    current_date   = datetime.now().strftime("%d/%m/%y")
     weights_sorted = sorted(weights_data, key=lambda w: w["date"])
     phases_sorted  = sorted(phases_data,  key=lambda p: p["start_date"])
 
-    # Fase activa
     active_phase = next((p for p in phases_sorted if p["end_date"] is None), None)
     active_start = active_phase["start_date"] if active_phase else None
 
@@ -119,12 +141,11 @@ def generate_report(user_id: int) -> str:
     for phase in phases_sorted:
         estado = "ACTIVA" if phase["end_date"] is None else "FINALIZADA"
         r.append(f" {fmt(phase['start_date'])} -> {fmt(phase['end_date'])}  |  {phase['phase_type'].upper()}  |  [{estado}]")
-        # Rendimiento en gym en esta fase
         if phase["id"] in strength_by_phase:
             s = strength_by_phase[phase["id"]]
             r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media")
             for ex in s["exercises"]:
-                r.append(f"     {ex['name']}: {ex['base']:.1f} -> {ex['current']:.1f} kg  ({ex['pct']:+.1f}%)")
+                r.append(f"     {ex['name']}: {fmt(ex['base_date'])} {ex['base']:.1f}kg -> {fmt(ex['current_date'])} {ex['current']:.1f}kg  ({ex['pct']:+.1f}%)")
         r.append("")
 
     # ── Pesos ─────────────────────────────────────────────────────────────────
@@ -135,11 +156,7 @@ def generate_report(user_id: int) -> str:
 
     r.append("")
     r.append("-- PROMEDIOS SEMANALES (fases pasadas) --")
-    if active_start:
-        past_weights = [w for w in weights_sorted if w["date"] < active_start]
-    else:
-        past_weights = weights_sorted
-
+    past_weights = [w for w in weights_sorted if not active_start or w["date"] < active_start]
     if past_weights:
         for monday, sunday, avg in weekly_averages(past_weights):
             r.append(f"  {fmt(monday)} - {fmt(sunday)}  ->  {avg:.2f} kg")
@@ -167,20 +184,7 @@ def generate_report(user_id: int) -> str:
     # ── Gym ───────────────────────────────────────────────────────────────────
     r.append("")
     r.append("-- HISTORIAL DE GYM --")
-    by_exercise = {}
-    for log in gym_logs:
-        eid = log["exercise_type_id"]
-        if eid not in by_exercise:
-            by_exercise[eid] = {"name": log["name"], "logs": []}
-        by_exercise[eid]["logs"].append(log)
-
-    for eid, data in by_exercise.items():
-        r.append(f"  {data['name'].upper()}:")
-        for log in sorted(data["logs"], key=lambda l: l["start_date"]):
-            peso = f"{log['weight']} kg" if log["weight"] else "sin peso"
-            reps = f" x {log['reps']} reps" if log["reps"] else ""
-            r.append(f"    {fmt(log['start_date'])} -> {fmt(log['end_date'])}  |  {peso}{reps}")
-        r.append("")
+    r.extend(gym_section(gym_logs))
 
     # ── Informes nutricionista ────────────────────────────────────────────────
     r.append("-- MEDICIONES DEL NUTRICIONISTA --")
@@ -214,7 +218,7 @@ def generate_raw_report(user_id: int) -> str:
     calories_data = get_calories(user_id)
     gym_logs      = get_gym_logs(user_id)
 
-    current_date = datetime.now().strftime("%d/%m/%y")
+    current_date   = datetime.now().strftime("%d/%m/%y")
     weights_sorted = sorted(weights_data, key=lambda w: w["date"])
     phases_sorted  = sorted(phases_data,  key=lambda p: p["start_date"])
     weights_values = [float(w["weight"]) for w in weights_sorted]
@@ -237,7 +241,7 @@ def generate_raw_report(user_id: int) -> str:
             s = strength_by_phase[phase["id"]]
             r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media")
             for ex in s["exercises"]:
-                r.append(f"     {ex['name']}: {ex['base']:.1f} -> {ex['current']:.1f} kg  ({ex['pct']:+.1f}%)")
+                r.append(f"     {ex['name']}: {fmt(ex['base_date'])} {ex['base']:.1f}kg -> {fmt(ex['current_date'])} {ex['current']:.1f}kg  ({ex['pct']:+.1f}%)")
         r.append("")
 
     # ── Pesos ─────────────────────────────────────────────────────────────────
@@ -264,20 +268,7 @@ def generate_raw_report(user_id: int) -> str:
     # ── Gym ───────────────────────────────────────────────────────────────────
     r.append("")
     r.append("-- HISTORIAL DE GYM --")
-    by_exercise = {}
-    for log in gym_logs:
-        eid = log["exercise_type_id"]
-        if eid not in by_exercise:
-            by_exercise[eid] = {"name": log["name"], "logs": []}
-        by_exercise[eid]["logs"].append(log)
-
-    for eid, data in by_exercise.items():
-        r.append(f"  {data['name'].upper()}:")
-        for log in sorted(data["logs"], key=lambda l: l["start_date"]):
-            peso = f"{log['weight']} kg" if log["weight"] else "sin peso"
-            reps = f" x {log['reps']} reps" if log["reps"] else ""
-            r.append(f"    {fmt(log['start_date'])} -> {fmt(log['end_date'])}  |  {peso}{reps}")
-        r.append("")
+    r.extend(gym_section(gym_logs))
 
     # ── Informes nutricionista ────────────────────────────────────────────────
     r.append("-- MEDICIONES DEL NUTRICIONISTA --")
