@@ -36,6 +36,7 @@ from db.queries import (
     get_active_calories,
     get_exercise_type,
     insert_exercise_type,
+    get_gym_logs,
     get_active_gym_logs,
     close_gym_log,
     insert_gym_log

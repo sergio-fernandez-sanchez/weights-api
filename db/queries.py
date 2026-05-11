@@ -399,12 +399,19 @@ def insert_exercise_type(user_id: int, new_exercise_type: dict):
 
 def get_gym_logs(user_id: int) -> list[dict]:
     """
-    Hace una consulta SELECT y devuelve todos los datos de la tabla "gym_logs" del usuario.
+    Devuelve todos los gym_logs del usuario con nombre y categoría del ejercicio.
     """
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM gym_logs WHERE user_id = %s", (user_id,))
+        cursor.execute("""
+            SELECT gl.id, gl.start_date, gl.end_date, gl.weight, gl.reps, gl.user_id,
+                   et.id as exercise_type_id, et.name, et.category
+            FROM gym_logs gl
+            JOIN exercise_types et ON gl.exercise_type_id = et.id
+            WHERE gl.user_id = %s
+            ORDER BY gl.start_date
+        """, (user_id,))
         return cursor.fetchall()
     except Exception as e:
         raise e
