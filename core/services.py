@@ -18,7 +18,7 @@ def add_weight(user_id: int, new_weight: dict) -> str:
     """
     Actualiza el ultimo peso o inserta uno nuevo dependiendo de si ya hay un regustro en el dia actual 
     """
-    status = update_weight(new_weight["weight"], user_id) if get_weight_on_date(datetime.now().date(), user_id) else insert_weight(new_weight["weight"], user_id)
+    status = update_weight(user_id, new_weight["weight"]) if get_weight_on_date(user_id, datetime.now().date()) else insert_weight(new_weight["weight"], user_id)
     return status
 
 
