@@ -160,7 +160,8 @@ def generate_report(user_id: int) -> str:
         for c in calories_data:
             c_start = c["start_date"]
             c_end = c["end_date"] or today
-            if c_start <= phase_end and c_end >= phase_start:
+            # Solapamiento estricto: excluir bordes exactos para evitar doble conteo
+            if c_start < phase_end and c_end > phase_start:
                 cals_in_phase.append(c["calories"])
 
         phase_obj = {
