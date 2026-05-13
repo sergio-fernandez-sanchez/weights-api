@@ -15,6 +15,16 @@ def volume(log):
     return None
 
 
+def one_rm(log):
+    """Calcula el 1RM estimado usando la fórmula de Epley: peso * (1 + reps/30).
+    Si no hay reps, devuelve el peso directamente."""
+    if log["weight"] and log["reps"]:
+        return float(log["weight"]) * (1 + int(log["reps"]) / 30)
+    elif log["weight"]:
+        return float(log["weight"])
+    return None
+
+
 def weekly_averages(weights_sorted):
     by_week = {}
     for w in weights_sorted:
@@ -72,8 +82,8 @@ def calc_strength_by_phase(gym_logs, phases):
             if base["id"] == current["id"]:
                 continue
 
-            vol_base    = volume(base)
-            vol_current = volume(current)
+            vol_base    = one_rm(base)
+            vol_current = one_rm(current)
 
             if not vol_base or not vol_current:
                 continue
@@ -154,7 +164,7 @@ def generate_report(user_id: int) -> str:
         r.append(f" {fmt(phase['start_date'])} -> {fmt(phase['end_date'])}  |  {phase['phase_type'].upper()}  |  [{estado}]")
         if phase["id"] in strength_by_phase:
             s = strength_by_phase[phase["id"]]
-            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media (volumen peso×reps)")
+            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media (1RM estimado Epley)")
             for ex in s["exercises"]:
                 base_str    = fmt_log({"weight": ex["base"],    "reps": ex["base_reps"]})
                 current_str = fmt_log({"weight": ex["current"], "reps": ex["current_reps"]})
@@ -246,7 +256,7 @@ def generate_raw_report(user_id: int) -> str:
         r.append(f" {fmt(phase['start_date'])} -> {fmt(phase['end_date'])}  |  {phase['phase_type'].upper()}  |  [{estado}]")
         if phase["id"] in strength_by_phase:
             s = strength_by_phase[phase["id"]]
-            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media (volumen peso×reps)")
+            r.append(f"   Rendimiento gym: {s['avg']:+.1f}% media (1RM estimado Epley)")
             for ex in s["exercises"]:
                 base_str    = fmt_log({"weight": ex["base"],    "reps": ex["base_reps"]})
                 current_str = fmt_log({"weight": ex["current"], "reps": ex["current_reps"]})
