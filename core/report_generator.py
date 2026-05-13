@@ -59,23 +59,21 @@ def calc_strength_by_phase(gym_logs, phases):
             before_phase = [l for l in all_logs_exercise if l["start_date"] < phase_start]
             during_phase = [l for l in all_logs_exercise if phase_start <= l["start_date"] <= phase_end]
 
-            if not during_phase:
-                continue
+            # current = último log global (igual que CurrentPhase.jsx)
+            current = all_logs_exercise[-1]
 
-            last_during = during_phase[-1]
-
-            if before_phase:
-                base = before_phase[-1]
-            elif len(during_phase) >= 2:
+            if len(during_phase) >= 2:
                 base = during_phase[0]
+            elif len(during_phase) == 1 and before_phase:
+                base = before_phase[-1]
             else:
                 continue
 
-            if base["id"] == last_during["id"]:
+            if base["id"] == current["id"]:
                 continue
 
             vol_base    = volume(base)
-            vol_current = volume(last_during)
+            vol_current = volume(current)
 
             if not vol_base or not vol_current:
                 continue
@@ -87,9 +85,9 @@ def calc_strength_by_phase(gym_logs, phases):
                 "base": float(base["weight"]),
                 "base_reps": base["reps"],
                 "base_date": base["start_date"],
-                "current": float(last_during["weight"]),
-                "current_reps": last_during["reps"],
-                "current_date": last_during["start_date"],
+                "current": float(current["weight"]),
+                "current_reps": current["reps"],
+                "current_date": current["start_date"],
             })
 
         if changes:
