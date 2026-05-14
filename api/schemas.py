@@ -86,3 +86,13 @@ class ProfileInput(BaseModel):
     height_cm:   Optional[float] = None
     allergies:   Optional[str]   = None
     supplements: Optional[str]   = None
+
+
+class WeeklyReportInput(BaseModel):
+    week_start:         Date
+    training_days:      Optional[int]   = None
+    avg_daily_steps:    Optional[int]   = None
+    alcohol_drinks:     Optional[float] = None
+    cigarettes_per_day: Optional[float] = None
+    avg_water_liters:   Optional[float] = None
+    notes:              Optional[str]   = None

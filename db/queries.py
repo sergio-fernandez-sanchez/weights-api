@@ -530,3 +530,71 @@ def upsert_user_profile(user_id: int, profile_data: dict) -> str:
         raise e
     finally:
         conn.close()
+
+
+# Weekly reports
+
+def get_weekly_reports(user_id: int) -> list[dict]:
+    """
+    Devuelve todos los informes semanales del usuario.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM weekly_reports WHERE user_id = %s ORDER BY week_start DESC", (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def get_weekly_report(user_id: int, week_start: date) -> dict | None:
+    """
+    Devuelve el informe semanal de una semana concreta o None si no existe.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM weekly_reports WHERE user_id = %s AND week_start = %s", (user_id, week_start))
+        return cursor.fetchone()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def upsert_weekly_report(user_id: int, report_data: dict) -> str:
+    """
+    Inserta o actualiza el informe semanal de una semana concreta.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            INSERT INTO weekly_reports (user_id, week_start, training_days, avg_daily_steps, alcohol_drinks, cigarettes_per_day, avg_water_liters, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, week_start) DO UPDATE SET
+                training_days      = EXCLUDED.training_days,
+                avg_daily_steps    = EXCLUDED.avg_daily_steps,
+                alcohol_drinks     = EXCLUDED.alcohol_drinks,
+                cigarettes_per_day = EXCLUDED.cigarettes_per_day,
+                avg_water_liters   = EXCLUDED.avg_water_liters,
+                notes              = EXCLUDED.notes
+        """, (
+            user_id,
+            report_data["week_start"],
+            report_data.get("training_days"),
+            report_data.get("avg_daily_steps"),
+            report_data.get("alcohol_drinks"),
+            report_data.get("cigarettes_per_day"),
+            report_data.get("avg_water_liters"),
+            report_data.get("notes"),
+        ))
+        conn.commit()
+        return "saved"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

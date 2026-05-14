@@ -21,11 +21,15 @@ from api.schemas import (
     CaloriesInput,
     GymLogInput,
     ExerciseTypeInput,
-    ProfileInput
+    ProfileInput,
+    WeeklyReportInput
 )
 from db.queries import (
     get_user_profile,
     upsert_user_profile,
+    get_weekly_reports,
+    get_weekly_report,
+    upsert_weekly_report,
     insert_user,
     get_user_by_email,
     get_weights,
@@ -195,6 +199,24 @@ async def get_profile_ep(user_id: int = Depends(get_current_user_id)):
 @app.patch("/profile")
 async def patch_profile_ep(data: ProfileInput, user_id: int = Depends(get_current_user_id)):
     return upsert_user_profile(user_id, data.model_dump())
+
+
+# Weekly reports
+@app.get("/weekly-reports")
+async def get_weekly_reports_ep(user_id: int = Depends(get_current_user_id)):
+    return get_weekly_reports(user_id)
+
+
+@app.get("/weekly-reports/{week_start}")
+async def get_weekly_report_ep(week_start: str, user_id: int = Depends(get_current_user_id)):
+    from datetime import date
+    d = date.fromisoformat(week_start)
+    return get_weekly_report(user_id, d)
+
+
+@app.patch("/weekly-reports")
+async def patch_weekly_report_ep(data: WeeklyReportInput, user_id: int = Depends(get_current_user_id)):
+    return upsert_weekly_report(user_id, data.model_dump())
 
 
 # AI Report Generator
