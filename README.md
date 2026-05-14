@@ -1,6 +1,6 @@
 # Weights API
 
-REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports, calorie targets, gym performance tracking and AI report generation. Includes JWT authentication with multi-user support.
+REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports, calorie targets, gym performance tracking, user profiles, weekly lifestyle reports and AI report generation. Includes JWT authentication with multi-user support.
 
 Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain time) to stay within the free tier.
 
@@ -38,7 +38,7 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 |---|---|---|
 | GET | `/phases` | Get all training phases |
 | GET | `/phases/active` | Get the current active phase |
-| POST | `/phases` | Close current phase and start a new one (optional start date) |
+| POST | `/phases` | Close current phase (end_date = start - 1 day) and start a new one |
 | PATCH | `/phases/active` | Update weight goal and date goal of the active phase |
 
 ### Reports
@@ -52,7 +52,7 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 |---|---|---|
 | GET | `/calories` | Get full calorie target history |
 | GET | `/calories/active` | Get current calorie target |
-| POST | `/calories` | Close current target and set a new one |
+| POST | `/calories` | Close current target (end_date = yesterday) and set a new one |
 
 ### Gym
 | Method | Route | Description |
@@ -62,14 +62,27 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 | GET | `/gym/logs` | Get full gym log history with exercise names |
 | GET | `/gym/logs/active` | Get active gym logs (no end date) with exercise names |
 | POST | `/gym/logs` | Add a new gym log entry |
-| PATCH | `/gym/logs/{log_id}` | Close current log and insert updated one |
-| DELETE | `/gym/logs/{log_id}` | Close a gym log (set end date to today) |
+| PATCH | `/gym/logs/{log_id}` | Close current log (end_date = yesterday) and insert updated one |
+| DELETE | `/gym/logs/{log_id}` | Close a gym log (end_date = yesterday) |
+
+### Profile
+| Method | Route | Description |
+|---|---|---|
+| GET | `/profile` | Get user personal data |
+| PATCH | `/profile` | Create or update user personal data |
+
+### Weekly Reports
+| Method | Route | Description |
+|---|---|---|
+| GET | `/weekly-reports` | Get all weekly lifestyle reports |
+| GET | `/weekly-reports/{week_start}` | Get weekly report for a specific week (YYYY-MM-DD, must be a Monday) |
+| PATCH | `/weekly-reports` | Create or update a weekly report |
 
 ### AI Reports
 | Method | Route | Description |
 |---|---|---|
-| GET | `/generate-report` | Generate optimized report for AI analysis (weekly averages for past phases, all records for active phase, calories, gym with strength % per phase) |
-| GET | `/generate-report/raw` | Generate full raw data report (all weight records, calories, gym history, nutritionist measurements) |
+| GET | `/generate-report` | Generate optimized JSON report for AI analysis (notes first, profile, phases with gym strength, weekly blocks, gym history, nutritionist reports) |
+| GET | `/generate-report/raw` | Generate full raw JSON data (all records unprocessed, separated by section) |
 
 All endpoints except `/auth/register` and `/auth/login` require a valid JWT token in the `Authorization: Bearer <token>` header.
 
@@ -81,7 +94,7 @@ All endpoints except `/auth/register` and `/auth/login` require a valid JWT toke
 weights-api/
 ├── core/
 │   ├── services.py          # Business logic
-│   └── report_generator.py  # AI report text generation (two report types)
+│   └── report_generator.py  # AI report JSON generation (two report types)
 ├── db/
 │   ├── database.py          # PostgreSQL connection
 │   └── queries.py           # SQL queries
@@ -191,6 +204,30 @@ CREATE TABLE gym_logs (
     weight NUMERIC(5,2) NULL,
     reps INTEGER NULL,
     user_id INTEGER REFERENCES users(id)
+);
+
+CREATE TABLE user_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE REFERENCES users(id),
+    name VARCHAR(100),
+    birth_date DATE,
+    sex VARCHAR(10),
+    height_cm NUMERIC(5,1),
+    allergies TEXT,
+    supplements TEXT
+);
+
+CREATE TABLE weekly_reports (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    week_start DATE NOT NULL,
+    training_days INTEGER,
+    avg_daily_steps INTEGER,
+    alcohol_drinks NUMERIC(5,1),
+    cigarettes_per_day NUMERIC(5,1),
+    avg_water_liters NUMERIC(5,2),
+    notes TEXT,
+    UNIQUE(user_id, week_start)
 );
 
 CREATE INDEX idx_weights_user_date ON weights(user_id, date);
