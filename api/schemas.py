@@ -77,3 +77,12 @@ class GymLogInput(BaseModel):
 class ExerciseTypeInput(BaseModel):
     name: str
     category: str = 'custom'
+
+
+class ProfileInput(BaseModel):
+    name:        Optional[str]   = None
+    birth_date:  Optional[Date]  = None
+    sex:         Optional[str]   = None
+    height_cm:   Optional[float] = None
+    allergies:   Optional[str]   = None
+    supplements: Optional[str]   = None

@@ -478,3 +478,55 @@ def get_active_gym_logs(user_id: int) -> list[dict]:
         raise e
     finally:
         conn.close()
+
+
+# User profile
+
+def get_user_profile(user_id: int) -> dict | None:
+    """
+    Devuelve el perfil del usuario o None si no existe todavía.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM user_profiles WHERE user_id = %s", (user_id,))
+        return cursor.fetchone()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def upsert_user_profile(user_id: int, profile_data: dict) -> str:
+    """
+    Inserta o actualiza el perfil del usuario (upsert por user_id).
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            INSERT INTO user_profiles (user_id, name, birth_date, sex, height_cm, allergies, supplements)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET
+                name        = EXCLUDED.name,
+                birth_date  = EXCLUDED.birth_date,
+                sex         = EXCLUDED.sex,
+                height_cm   = EXCLUDED.height_cm,
+                allergies   = EXCLUDED.allergies,
+                supplements = EXCLUDED.supplements
+        """, (
+            user_id,
+            profile_data.get("name"),
+            profile_data.get("birth_date"),
+            profile_data.get("sex"),
+            profile_data.get("height_cm"),
+            profile_data.get("allergies"),
+            profile_data.get("supplements"),
+        ))
+        conn.commit()
+        return "saved"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

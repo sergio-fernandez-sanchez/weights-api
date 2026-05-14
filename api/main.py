@@ -20,9 +20,12 @@ from api.schemas import (
     ReportInput, 
     CaloriesInput,
     GymLogInput,
-    ExerciseTypeInput
+    ExerciseTypeInput,
+    ProfileInput
 )
 from db.queries import (
+    get_user_profile,
+    upsert_user_profile,
     insert_user,
     get_user_by_email,
     get_weights,
@@ -181,6 +184,17 @@ async def delete_gym_log_ep(log_id: int, user_id: int = Depends(get_current_user
 @app.patch("/gym/logs/{log_id}")
 async def patch_gym_log_ep(log_id: int, data: GymLogInput, user_id: int = Depends(get_current_user_id)):
     return update_gym_log(user_id, log_id, data.model_dump())
+
+
+# User profile
+@app.get("/profile")
+async def get_profile_ep(user_id: int = Depends(get_current_user_id)):
+    return get_user_profile(user_id)
+
+
+@app.patch("/profile")
+async def patch_profile_ep(data: ProfileInput, user_id: int = Depends(get_current_user_id)):
+    return upsert_user_profile(user_id, data.model_dump())
 
 
 # AI Report Generator
