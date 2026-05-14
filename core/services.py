@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta, date
-from db.queries import ( 
-    get_weight_on_date, 
-    update_weight, 
-    insert_weight, 
-    get_weights, 
-    get_phases, 
-    close_phase, 
+from db.queries import (
+    get_weight_on_date,
+    update_weight,
+    insert_weight,
+    get_weights,
+    get_phases,
+    close_phase,
     insert_phase,
     close_calories,
     insert_calories,
@@ -16,7 +16,7 @@ from db.queries import (
 
 def add_weight(user_id: int, new_weight: dict) -> str:
     """
-    Actualiza el ultimo peso o inserta uno nuevo dependiendo de si ya hay un regustro en el dia actual 
+    Actualiza el ultimo peso o inserta uno nuevo dependiendo de si ya hay un registro en el dia actual.
     """
     status = update_weight(user_id, new_weight["weight"]) if get_weight_on_date(user_id, datetime.now().date()) else insert_weight(user_id, new_weight["weight"])
     return status
@@ -80,21 +80,21 @@ def get_weights_with_phase(user_id: int) -> list[dict]:
 
 def update_phase(user_id: int, phase_data: dict) -> dict:
     """
-    Cierra la fase de "phase" activa e inicia una nueva.
+    Cierra la fase activa con end_date = start_date_nueva - 1 día, e inicia una nueva.
     Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
     """
     start_date = phase_data.get("start_date") or datetime.now().date()
-    close_result = close_phase(user_id, start_date)
+    end_date = start_date - timedelta(days=1)
+    close_result = close_phase(user_id, end_date)
     insert_result = insert_phase(user_id, phase_data)
     return {"close": close_result, "insert": insert_result}
 
 
 def update_calories(user_id: int, calories_data: dict) -> dict:
     """
-    Cierra la fase de "calories" activa e inicia una nueva.
-    Si se proporciona start_date la usa como fecha de inicio, si no usa hoy.
+    Cierra las calorías activas con end_date = ayer, e inicia un nuevo registro desde hoy.
     """
-    close_result = close_calories(user_id)
+    close_result  = close_calories(user_id)
     insert_result = insert_calories(user_id, calories_data)
     return {"close": close_result, "insert": insert_result}
 
@@ -103,6 +103,6 @@ def update_gym_log(user_id: int, log_id: int, log_data: dict) -> dict:
     """
     Cierra el gym_log con el id indicado e inserta uno nuevo con los datos actualizados.
     """
-    close_result = close_gym_log(user_id, log_id, datetime.now().date())
+    close_result  = close_gym_log(user_id, log_id, datetime.now().date())
     insert_result = insert_gym_log(user_id, log_data)
     return {"close": close_result, "insert": insert_result}

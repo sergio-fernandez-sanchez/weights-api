@@ -1,6 +1,6 @@
 import psycopg2
 import psycopg2.extras
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from db.database import get_connection
 
 
@@ -50,9 +50,9 @@ def get_weights(user_id: int) -> list[dict]:
     """
     conn = get_connection()
     try:
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)       # RealDictCursor hace que fetchall() devuelva lista de dicts en lugar de tuplas
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("SELECT * FROM weights WHERE user_id = %s", (user_id,))
-        return cursor.fetchall()                                                   # fetchall() recoge todos los resultados de la query — están esperando en el cursor
+        return cursor.fetchall()
     except Exception as e:
         raise e
     finally:
@@ -61,14 +61,14 @@ def get_weights(user_id: int) -> list[dict]:
 
 def get_weight_on_date(user_id: int, target_date: date) -> dict | None:
     """
-    Hace una consulta SELECT y devuelve el diccionario de la tabla "weights" de la fecha indicada
+    Hace una consulta SELECT y devuelve el diccionario de la tabla "weights" de la fecha indicada.
     """
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM weights WHERE date = %s AND user_id = %s",   # %s es el placeholder — psycopg2 lo sustituye por target_date de forma segura (evita SQL injection), la coma después de target_date es necesaria para que sea una tupla
+        cursor.execute("SELECT * FROM weights WHERE date = %s AND user_id = %s",
                        (target_date, user_id))
-        return cursor.fetchone()                                                   # fetchone() devuelve solo la primera fila porque solo esperamos un resultado
+        return cursor.fetchone()
     except Exception as e:
         raise e
     finally:
@@ -77,7 +77,7 @@ def get_weight_on_date(user_id: int, target_date: date) -> dict | None:
 
 def get_last_weight(user_id: int) -> dict | None:
     """
-    Hace una consulta SELECT y devuelve un diccionario con la ultima fila de "weights"
+    Hace una consulta SELECT y devuelve un diccionario con la ultima fila de "weights".
     """
     conn = get_connection()
     try:
@@ -100,10 +100,10 @@ def insert_weight(user_id: int, new_weight: float) -> str:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("INSERT INTO weights (date, weight, user_id) VALUES (%s, %s, %s)",
                        (datetime.now().date(), new_weight, user_id))
-        conn.commit()                                                      # commit() confirma los cambios en la BD, sin esto el INSERT no se guarda, los SELECT no necesitan commit(), solo INSERT/UPDATE/DELETE
+        conn.commit()
         return "added"
     except Exception as e:
-        conn.rollback()                                                    # rollback() deshace los cambios y deja la BD como estaba
+        conn.rollback()
         raise e
     finally:
         conn.close()
@@ -146,7 +146,7 @@ def get_phases(user_id: int) -> list[dict]:
 
 def get_active_phase(user_id: int) -> dict | None:
     """
-    Hace una consulta SELECT y devuelve el dato de la tabla "phases" que no tiene "end_date"
+    Hace una consulta SELECT y devuelve el dato de la tabla "phases" que no tiene "end_date".
     """
     conn = get_connection()
     try:
@@ -162,7 +162,7 @@ def get_active_phase(user_id: int) -> dict | None:
 
 def close_phase(user_id: int, end_date: date) -> str:
     """
-    Actualiza el "end_date" de la ultima fila en la tabla "phases".
+    Actualiza el "end_date" de la fase activa. Recibe la fecha de fin ya calculada.
     """
     conn = get_connection()
     try:
@@ -229,7 +229,7 @@ def update_phase_goals(user_id: int, new_phase_goals: dict) -> str:
 
 def get_reports(user_id: int) -> list[dict]:
     """
-    Hace una consulta SELECT y devuelve todos los datos de la tabla "reports"
+    Hace una consulta SELECT y devuelve todos los datos de la tabla "reports".
     """
     conn = get_connection()
     try:
@@ -302,7 +302,7 @@ def get_calories(user_id: int) -> list[dict]:
 
 def get_active_calories(user_id: int) -> dict | None:
     """
-    Hace una consulta SELECT y devuelve el dato de la tabla "calories" que no tiene "end_date"
+    Hace una consulta SELECT y devuelve el dato de la tabla "calories" que no tiene "end_date".
     """
     conn = get_connection()
     try:
@@ -317,15 +317,13 @@ def get_active_calories(user_id: int) -> dict | None:
 
 def insert_calories(user_id: int, new_calories: dict) -> str:
     """
-    Inserta un nuevo registro en la tabla "calories".
+    Inserta un nuevo registro en la tabla "calories" con start_date de hoy.
     """
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        start_date = datetime.now().date()
-        cursor.execute("INSERT INTO calories (start_date, calories, user_id) "
-                       "VALUES (%s, %s, %s)",
-                       (start_date, new_calories["calories"], user_id,))
+        cursor.execute("INSERT INTO calories (start_date, calories, user_id) VALUES (%s, %s, %s)",
+                       (datetime.now().date(), new_calories["calories"], user_id))
         conn.commit()
         return "added"
     except Exception as e:
@@ -337,14 +335,15 @@ def insert_calories(user_id: int, new_calories: dict) -> str:
 
 def close_calories(user_id: int) -> str:
     """
-    Cierra el objetivo calórico activo poniendo end_date a hoy.
+    Cierra el objetivo calórico activo poniendo end_date a ayer (día anterior a hoy).
     """
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        yesterday = datetime.now().date() - timedelta(days=1)
         cursor.execute(
             "UPDATE calories SET end_date = %s WHERE user_id = %s AND end_date IS NULL",
-            (datetime.now().date(), user_id)
+            (yesterday, user_id)
         )
         conn.commit()
         return "closed"
@@ -382,9 +381,8 @@ def insert_exercise_type(user_id: int, new_exercise_type: dict):
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("INSERT INTO exercise_types (name, category, user_id) "
-                       "VALUES (%s, %s, %s)",
-                       (new_exercise_type["name"], new_exercise_type["category"], user_id,))
+        cursor.execute("INSERT INTO exercise_types (name, category, user_id) VALUES (%s, %s, %s)",
+                       (new_exercise_type["name"], new_exercise_type["category"], user_id))
         conn.commit()
         return "added"
     except Exception as e:
@@ -392,7 +390,6 @@ def insert_exercise_type(user_id: int, new_exercise_type: dict):
         raise e
     finally:
         conn.close()
-
 
 
 # Gym logs
@@ -427,8 +424,7 @@ def insert_gym_log(user_id: int, log_data: dict) -> str:
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute(
-            "INSERT INTO gym_logs (start_date, exercise_type_id, weight, reps, user_id) "
-            "VALUES (%s, %s, %s, %s, %s)",
+            "INSERT INTO gym_logs (start_date, exercise_type_id, weight, reps, user_id) VALUES (%s, %s, %s, %s, %s)",
             (datetime.now().date(), log_data["exercise_type_id"],
              log_data.get("weight"), log_data.get("reps"), user_id)
         )
