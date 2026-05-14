@@ -101,8 +101,9 @@ def update_calories(user_id: int, calories_data: dict) -> dict:
 
 def update_gym_log(user_id: int, log_id: int, log_data: dict) -> dict:
     """
-    Cierra el gym_log con el id indicado e inserta uno nuevo con los datos actualizados.
+    Cierra el gym_log con el id indicado con end_date = ayer, e inserta uno nuevo desde hoy.
     """
-    close_result  = close_gym_log(user_id, log_id, datetime.now().date())
+    yesterday     = datetime.now().date() - timedelta(days=1)
+    close_result  = close_gym_log(user_id, log_id, yesterday)
     insert_result = insert_gym_log(user_id, log_data)
     return {"close": close_result, "insert": insert_result}
