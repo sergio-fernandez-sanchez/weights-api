@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,13 +11,12 @@ from core.services import (
     update_calories,
     update_gym_log
 )
-from api.schemas import ( 
-    UserInput, 
-    TokenResponse, 
-    WeightInput, 
-    PhaseInput, 
-    PhaseGoalsInput, 
-    ReportInput, 
+from api.schemas import (
+    UserInput,
+    TokenResponse,
+    WeightInput,
+    PhaseInput,
+    PhaseGoalsInput,
     CaloriesInput,
     GymLogInput,
     ExerciseTypeInput,
@@ -45,8 +44,6 @@ from db.queries import (
     get_last_weight,
     get_active_phase,
     get_phases,
-    get_reports,
-    insert_report,
     update_phase_goals,
     get_calories,
     get_active_calories,
@@ -78,10 +75,6 @@ async def post_new_user(data: UserInput):
 
 @app.post("/auth/login")
 async def login(data: UserInput) -> TokenResponse:
-    """
-    Verifica las credenciales del usuario y devuelve un token JWT si son correctas.
-    Devuelve 401 si el email no existe o la contraseña es incorrecta.
-    """
     user_data = get_user_by_email(data.email)
     if not user_data:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -133,15 +126,37 @@ async def post_phase_ep(data: PhaseInput, user_id: int = Depends(get_current_use
     return update_phase(user_id, data.model_dump())
 
 
-# Reports
-@app.get("/reports")
-async def get_reports_ep(user_id: int = Depends(get_current_user_id)):
-    return get_reports(user_id)
+# Bioimpedance reports
+@app.get("/bioimpedance-reports")
+async def get_bioimpedance_reports_ep(user_id: int = Depends(get_current_user_id)):
+    return get_bioimpedance_reports(user_id)
 
 
-@app.post("/reports")
-async def post_report_ep(data: ReportInput, user_id: int = Depends(get_current_user_id)):
-    return insert_report(user_id, data.model_dump())
+@app.post("/bioimpedance-reports")
+async def post_bioimpedance_report_ep(data: BioimpedanceReportInput, user_id: int = Depends(get_current_user_id)):
+    return insert_bioimpedance_report(user_id, data.model_dump())
+
+
+# DEXA reports
+@app.get("/dexa-reports")
+async def get_dexa_reports_ep(user_id: int = Depends(get_current_user_id)):
+    return get_dexa_reports(user_id)
+
+
+@app.post("/dexa-reports")
+async def post_dexa_report_ep(data: DexaReportInput, user_id: int = Depends(get_current_user_id)):
+    return insert_dexa_report(user_id, data.model_dump())
+
+
+# Body measurements
+@app.get("/body-measurements")
+async def get_body_measurements_ep(user_id: int = Depends(get_current_user_id)):
+    return get_body_measurements(user_id)
+
+
+@app.post("/body-measurements")
+async def post_body_measurement_ep(data: BodyMeasurementInput, user_id: int = Depends(get_current_user_id)):
+    return insert_body_measurement(user_id, data.model_dump())
 
 
 # Calories
@@ -189,7 +204,6 @@ async def post_gym_logs_ep(data: GymLogInput, user_id: int = Depends(get_current
 
 @app.delete("/gym/logs/{log_id}")
 async def delete_gym_log_ep(log_id: int, user_id: int = Depends(get_current_user_id)):
-    """Cierra un gym_log poniendo end_date a ayer."""
     yesterday = datetime.now().date() - timedelta(days=1)
     return close_gym_log(user_id, log_id, yesterday)
 
@@ -218,7 +232,6 @@ async def get_weekly_reports_ep(user_id: int = Depends(get_current_user_id)):
 
 @app.get("/weekly-reports/{week_start}")
 async def get_weekly_report_ep(week_start: str, user_id: int = Depends(get_current_user_id)):
-    from datetime import date
     d = date.fromisoformat(week_start)
     return get_weekly_report(user_id, d)
 
@@ -226,36 +239,6 @@ async def get_weekly_report_ep(week_start: str, user_id: int = Depends(get_curre
 @app.patch("/weekly-reports")
 async def patch_weekly_report_ep(data: WeeklyReportInput, user_id: int = Depends(get_current_user_id)):
     return upsert_weekly_report(user_id, data.model_dump())
-
-
-# Bioimpedance reports
-@app.get("/bioimpedance-reports")
-async def get_bioimpedance_reports_ep(user_id: int = Depends(get_current_user_id)):
-    return get_bioimpedance_reports(user_id)
-
-@app.post("/bioimpedance-reports")
-async def post_bioimpedance_report_ep(data: BioimpedanceReportInput, user_id: int = Depends(get_current_user_id)):
-    return insert_bioimpedance_report(user_id, data.model_dump())
-
-
-# DEXA reports
-@app.get("/dexa-reports")
-async def get_dexa_reports_ep(user_id: int = Depends(get_current_user_id)):
-    return get_dexa_reports(user_id)
-
-@app.post("/dexa-reports")
-async def post_dexa_report_ep(data: DexaReportInput, user_id: int = Depends(get_current_user_id)):
-    return insert_dexa_report(user_id, data.model_dump())
-
-
-# Body measurements
-@app.get("/body-measurements")
-async def get_body_measurements_ep(user_id: int = Depends(get_current_user_id)):
-    return get_body_measurements(user_id)
-
-@app.post("/body-measurements")
-async def post_body_measurement_ep(data: BodyMeasurementInput, user_id: int = Depends(get_current_user_id)):
-    return insert_body_measurement(user_id, data.model_dump())
 
 
 # AI Report Generator
