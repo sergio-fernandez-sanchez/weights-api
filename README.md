@@ -1,6 +1,6 @@
 # Weights API
 
-REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), nutritionist body composition reports, calorie targets, gym performance tracking, user profiles, weekly lifestyle reports and AI report generation. Includes JWT authentication with multi-user support.
+REST API for personal body tracking built with FastAPI and PostgreSQL. Manages daily weight logs, training phases (bulk, cut, maintenance), bioimpedance reports, DEXA reports, body measurements, calorie targets, gym performance tracking, user profiles, weekly lifestyle reports and AI report generation. Includes JWT authentication with multi-user support.
 
 Deployed on Railway. Automatically pauses at 23:00 and resumes at 8:00 (Spain time) to stay within the free tier.
 
@@ -41,11 +41,23 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 | POST | `/phases` | Close current phase (end_date = start - 1 day) and start a new one |
 | PATCH | `/phases/active` | Update weight goal and date goal of the active phase |
 
-### Reports
+### Bioimpedance Reports
 | Method | Route | Description |
 |---|---|---|
-| GET | `/reports` | Get all nutritionist reports |
-| POST | `/reports` | Add a new nutritionist report (optional date) |
+| GET | `/bioimpedance-reports` | Get all bioimpedance reports |
+| POST | `/bioimpedance-reports` | Add a new bioimpedance report (optional date) |
+
+### DEXA Reports
+| Method | Route | Description |
+|---|---|---|
+| GET | `/dexa-reports` | Get all DEXA reports |
+| POST | `/dexa-reports` | Add a new DEXA report (optional date) |
+
+### Body Measurements
+| Method | Route | Description |
+|---|---|---|
+| GET | `/body-measurements` | Get all body measurements |
+| POST | `/body-measurements` | Add a new body measurement (optional date) |
 
 ### Calories
 | Method | Route | Description |
@@ -81,7 +93,7 @@ Part of the [Weights Client](https://github.com/sergio-fernandez-sanchez/weights
 ### AI Reports
 | Method | Route | Description |
 |---|---|---|
-| GET | `/generate-report` | Generate optimized JSON report for AI analysis (notes first, profile, phases with gym strength, weekly blocks, gym history, nutritionist reports) |
+| GET | `/generate-report` | Generate optimized JSON report for AI analysis (notes, profile, phases, weekly blocks, gym history, reports) |
 | GET | `/generate-report/raw` | Generate full raw JSON data (all records unprocessed, separated by section) |
 
 All endpoints except `/auth/register` and `/auth/login` require a valid JWT token in the `Authorization: Bearer <token>` header.
@@ -162,7 +174,7 @@ CREATE TABLE phases (
     user_id INTEGER REFERENCES users(id)
 );
 
-CREATE TABLE reports (
+CREATE TABLE bioimpedance_reports (
     id SERIAL PRIMARY KEY,
     date DATE NOT NULL,
     body_fat_pct NUMERIC(5,2) NULL,
@@ -173,9 +185,29 @@ CREATE TABLE reports (
     trunk_fat_kg NUMERIC(5,2) NULL,
     trunk_fat_pct NUMERIC(5,2) NULL,
     total_body_water NUMERIC(5,2) NULL,
+    user_id INTEGER REFERENCES users(id)
+);
+
+CREATE TABLE dexa_reports (
+    id SERIAL PRIMARY KEY,
+    date DATE NOT NULL,
+    fat_mass_kg NUMERIC(5,2) NULL,
+    lean_mass_kg NUMERIC(5,2) NULL,
+    body_fat_pct NUMERIC(5,2) NULL,
+    muscle_mass_kg NUMERIC(5,2) NULL,
+    bone_mineral_density NUMERIC(5,3) NULL,
+    visceral_fat_kg NUMERIC(5,2) NULL,
+    user_id INTEGER REFERENCES users(id)
+);
+
+CREATE TABLE body_measurements (
+    id SERIAL PRIMARY KEY,
+    date DATE NOT NULL,
     neck_cm NUMERIC(5,2) NULL,
+    shoulders_cm NUMERIC(5,2) NULL,
     chest_cm NUMERIC(5,2) NULL,
     bicep_cm NUMERIC(5,2) NULL,
+    waist_cm NUMERIC(5,2) NULL,
     hip_cm NUMERIC(5,2) NULL,
     thigh_cm NUMERIC(5,2) NULL,
     user_id INTEGER REFERENCES users(id)
@@ -232,7 +264,9 @@ CREATE TABLE weekly_reports (
 
 CREATE INDEX idx_weights_user_date ON weights(user_id, date);
 CREATE INDEX idx_phases_user_date ON phases(user_id, start_date);
-CREATE INDEX idx_reports_user_date ON reports(user_id, date);
+CREATE INDEX idx_bioimpedance_user_date ON bioimpedance_reports(user_id, date);
+CREATE INDEX idx_dexa_user_date ON dexa_reports(user_id, date);
+CREATE INDEX idx_body_measurements_user_date ON body_measurements(user_id, date);
 CREATE INDEX idx_calories_user_date ON calories(user_id, start_date);
 CREATE INDEX idx_gym_logs_user ON gym_logs(user_id, start_date);
 ```

@@ -22,7 +22,10 @@ from api.schemas import (
     GymLogInput,
     ExerciseTypeInput,
     ProfileInput,
-    WeeklyReportInput
+    WeeklyReportInput,
+    BioimpedanceReportInput,
+    DexaReportInput,
+    BodyMeasurementInput
 )
 from db.queries import (
     get_user_profile,
@@ -30,6 +33,12 @@ from db.queries import (
     get_weekly_reports,
     get_weekly_report,
     upsert_weekly_report,
+    get_bioimpedance_reports,
+    insert_bioimpedance_report,
+    get_dexa_reports,
+    insert_dexa_report,
+    get_body_measurements,
+    insert_body_measurement,
     insert_user,
     get_user_by_email,
     get_weights,
@@ -217,6 +226,36 @@ async def get_weekly_report_ep(week_start: str, user_id: int = Depends(get_curre
 @app.patch("/weekly-reports")
 async def patch_weekly_report_ep(data: WeeklyReportInput, user_id: int = Depends(get_current_user_id)):
     return upsert_weekly_report(user_id, data.model_dump())
+
+
+# Bioimpedance reports
+@app.get("/bioimpedance-reports")
+async def get_bioimpedance_reports_ep(user_id: int = Depends(get_current_user_id)):
+    return get_bioimpedance_reports(user_id)
+
+@app.post("/bioimpedance-reports")
+async def post_bioimpedance_report_ep(data: BioimpedanceReportInput, user_id: int = Depends(get_current_user_id)):
+    return insert_bioimpedance_report(user_id, data.model_dump())
+
+
+# DEXA reports
+@app.get("/dexa-reports")
+async def get_dexa_reports_ep(user_id: int = Depends(get_current_user_id)):
+    return get_dexa_reports(user_id)
+
+@app.post("/dexa-reports")
+async def post_dexa_report_ep(data: DexaReportInput, user_id: int = Depends(get_current_user_id)):
+    return insert_dexa_report(user_id, data.model_dump())
+
+
+# Body measurements
+@app.get("/body-measurements")
+async def get_body_measurements_ep(user_id: int = Depends(get_current_user_id)):
+    return get_body_measurements(user_id)
+
+@app.post("/body-measurements")
+async def post_body_measurement_ep(data: BodyMeasurementInput, user_id: int = Depends(get_current_user_id)):
+    return insert_body_measurement(user_id, data.model_dump())
 
 
 # AI Report Generator

@@ -598,3 +598,126 @@ def upsert_weekly_report(user_id: int, report_data: dict) -> str:
         raise e
     finally:
         conn.close()
+
+
+# Bioimpedance reports
+
+def get_bioimpedance_reports(user_id: int) -> list[dict]:
+    """Devuelve todos los informes de bioimpedancia del usuario."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM bioimpedance_reports WHERE user_id = %s ORDER BY date", (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_bioimpedance_report(user_id: int, data: dict) -> str:
+    """Inserta un nuevo informe de bioimpedancia."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            INSERT INTO bioimpedance_reports 
+            (date, body_fat_pct, skeletal_muscle_mass, fat_free_mass, visceral_fat_index,
+             muscle_quality, trunk_fat_kg, trunk_fat_pct, total_body_water, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data.get("date") or datetime.now().date(),
+            data.get("body_fat_pct"), data.get("skeletal_muscle_mass"),
+            data.get("fat_free_mass"), data.get("visceral_fat_index"),
+            data.get("muscle_quality"), data.get("trunk_fat_kg"),
+            data.get("trunk_fat_pct"), data.get("total_body_water"),
+            user_id,
+        ))
+        conn.commit()
+        return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+# DEXA reports
+
+def get_dexa_reports(user_id: int) -> list[dict]:
+    """Devuelve todos los informes DEXA del usuario."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM dexa_reports WHERE user_id = %s ORDER BY date", (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_dexa_report(user_id: int, data: dict) -> str:
+    """Inserta un nuevo informe DEXA."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            INSERT INTO dexa_reports
+            (date, fat_mass_kg, lean_mass_kg, body_fat_pct, muscle_mass_kg,
+             bone_mineral_density, visceral_fat_kg, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data.get("date") or datetime.now().date(),
+            data.get("fat_mass_kg"), data.get("lean_mass_kg"),
+            data.get("body_fat_pct"), data.get("muscle_mass_kg"),
+            data.get("bone_mineral_density"), data.get("visceral_fat_kg"),
+            user_id,
+        ))
+        conn.commit()
+        return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+# Body measurements
+
+def get_body_measurements(user_id: int) -> list[dict]:
+    """Devuelve todas las medidas corporales del usuario."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM body_measurements WHERE user_id = %s ORDER BY date", (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_body_measurement(user_id: int, data: dict) -> str:
+    """Inserta una nueva medida corporal."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            INSERT INTO body_measurements
+            (date, neck_cm, chest_cm, bicep_cm, hip_cm, thigh_cm, waist_cm, shoulders_cm, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data.get("date") or datetime.now().date(),
+            data.get("neck_cm"), data.get("chest_cm"),
+            data.get("bicep_cm"), data.get("hip_cm"),
+            data.get("thigh_cm"), data.get("waist_cm"),
+            data.get("shoulders_cm"), user_id,
+        ))
+        conn.commit()
+        return "added"
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
