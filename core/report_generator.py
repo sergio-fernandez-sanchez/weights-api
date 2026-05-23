@@ -1,6 +1,10 @@
 import json
 from datetime import datetime, timedelta
-from db.queries import get_weights, get_phases, get_reports, get_calories, get_gym_logs, get_user_profile, get_weekly_reports
+from db.queries import (
+    get_weights, get_phases, get_calories, get_gym_logs,
+    get_user_profile, get_weekly_reports,
+    get_bioimpedance_reports, get_dexa_reports, get_body_measurements
+)
 
 
 def one_rm(weight, reps):
@@ -20,15 +24,11 @@ def iso(d):
 
 
 def toISO(date):
-    y = date.year
-    m = str(date.month).zfill(2)
-    d = str(date.day).zfill(2)
-    return f"{y}-{m}-{d}"
+    return f"{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}"
 
 
 def get_monday(date):
-    day = date.weekday()
-    return date - timedelta(days=day)
+    return date - timedelta(days=date.weekday())
 
 
 def get_phase_on_date(phases, date):
@@ -52,27 +52,29 @@ def get_calories_on_date(calories_data, date):
 # ── INFORME PARA IA ──────────────────────────────────────────────────────────
 
 def generate_report(user_id: int) -> str:
-    weights_data   = sorted(get_weights(user_id),       key=lambda w: w["date"])
-    phases_data    = sorted(get_phases(user_id),        key=lambda p: p["start_date"])
-    reports_data   = sorted(get_reports(user_id),       key=lambda r: r["date"])
-    calories_data  = sorted(get_calories(user_id),      key=lambda c: c["start_date"])
-    gym_logs       = sorted(get_gym_logs(user_id),      key=lambda l: l["start_date"])
-    weekly_reports = sorted(get_weekly_reports(user_id),key=lambda w: w["week_start"])
-    profile_data   = get_user_profile(user_id)
-    today          = datetime.now().date()
+    weights_data    = sorted(get_weights(user_id),              key=lambda w: w["date"])
+    phases_data     = sorted(get_phases(user_id),               key=lambda p: p["start_date"])
+    calories_data   = sorted(get_calories(user_id),             key=lambda c: c["start_date"])
+    gym_logs        = sorted(get_gym_logs(user_id),             key=lambda l: l["start_date"])
+    weekly_reports  = sorted(get_weekly_reports(user_id),       key=lambda w: w["week_start"])
+    bioimpedance    = sorted(get_bioimpedance_reports(user_id), key=lambda r: r["date"])
+    dexa            = sorted(get_dexa_reports(user_id),         key=lambda r: r["date"])
+    measurements    = sorted(get_body_measurements(user_id),    key=lambda r: r["date"])
+    profile_data    = get_user_profile(user_id)
+    today           = datetime.now().date()
 
-    # ── notes ────────────────────────────────────────────────────────────────
+    # ── notes ─────────────────────────────────────────────────────────────────
     notes = {
-        "one_rm_formula":              "Epley: weight * (1 + reps / 30)",
-        "null_values":                 "null means no data available for that field or period",
-        "weekly_report_null":          "null weekly_report means the user did not fill in that week's report",
-        "daily_weights_availability":  "daily_weights only available for the last 4 weeks, null for older weeks",
-        "gym_strength_vs_exercises":   "phases.gym_strength is a summary of strength progress per phase; gym_exercises contains the full granular history",
-        "calories_in_phases":          "calories list within each phase shows all calorie targets active during that phase period",
-        "phases_during_period":        "calories in weekly_blocks shows the active calorie target for that specific week",
+        "one_rm_formula":             "Epley: weight * (1 + reps / 30)",
+        "null_values":                "null means no data available for that field or period",
+        "weekly_report_null":         "null weekly_report means the user did not fill in that week's report",
+        "daily_weights_availability": "daily_weights only available for the last 4 weeks, null for older weeks",
+        "gym_strength_vs_exercises":  "phases.gym_strength is a summary of strength progress per phase; gym_exercises contains the full granular history",
+        "calories_in_phases":         "calories list within each phase shows all calorie targets active during that phase period",
+        "phases_during_period":       "calories in weekly_blocks shows the active calorie target for that specific week",
     }
 
-    # ── profile ──────────────────────────────────────────────────────────────
+    # ── profile ────────────────────────────────────────────────────────────────
     profile = None
     if profile_data:
         age = None
@@ -88,7 +90,7 @@ def generate_report(user_id: int) -> str:
             "supplements": profile_data.get("supplements"),
         }
 
-    # ── phases ───────────────────────────────────────────────────────────────
+    # ── phases ─────────────────────────────────────────────────────────────────
     phases_out = []
     for phase in phases_data:
         phase_start = phase["start_date"]
@@ -106,7 +108,6 @@ def generate_report(user_id: int) -> str:
             if d > 0:
                 weekly_rate = round((end_w - start_w) / d * 7, 3)
 
-        # Calorías durante la fase
         cals_in_phase = []
         for c in calories_data:
             c_start = c["start_date"]
@@ -118,7 +119,6 @@ def generate_report(user_id: int) -> str:
                     "kcal":       c["calories"],
                 })
 
-        # Gym strength — base = primer log de la fase o último antes, current = último dentro de la fase
         by_exercise = {}
         for log in gym_logs:
             eid = log["exercise_type_id"]
@@ -148,9 +148,9 @@ def generate_report(user_id: int) -> str:
                 continue
             pct = round(((rm_curr - rm_base) / rm_base) * 100, 2)
             gym_changes.append({
-                "name":             data["name"],
-                "base":             {"date": iso(base["start_date"]),    "weight_kg": float(base["weight"]),    "reps": base["reps"],    "one_rm": rm_base},
-                "current":          {"date": iso(current["start_date"]), "weight_kg": float(current["weight"]), "reps": current["reps"], "one_rm": rm_curr},
+                "name":              data["name"],
+                "base":              {"date": iso(base["start_date"]),    "weight_kg": float(base["weight"]),    "reps": base["reps"],    "one_rm": rm_base},
+                "current":           {"date": iso(current["start_date"]), "weight_kg": float(current["weight"]), "reps": current["reps"], "one_rm": rm_curr},
                 "change_pct_one_rm": pct,
             })
 
@@ -168,11 +168,8 @@ def generate_report(user_id: int) -> str:
                 "total_change_kg": change,
                 "weekly_rate_kg":  weekly_rate,
             },
-            "calories": cals_in_phase or None,
-            "gym_strength": {
-                "avg_change_pct_one_rm": avg_strength,
-                "exercises": gym_changes,
-            } if gym_changes else None,
+            "calories":     cals_in_phase or None,
+            "gym_strength": {"avg_change_pct_one_rm": avg_strength, "exercises": gym_changes} if gym_changes else None,
         }
         if is_active:
             phase_obj["weight_goal_kg"] = float(phase["weight_goal"]) if phase["weight_goal"] else None
@@ -180,52 +177,30 @@ def generate_report(user_id: int) -> str:
 
         phases_out.append(phase_obj)
 
-    # ── weekly_blocks ─────────────────────────────────────────────────────────
-    # Construir desde el primer peso registrado hasta hoy
-    if weights_data:
-        first_date = weights_data[0]["date"]
-    else:
-        first_date = today - timedelta(days=365)
-
+    # ── weekly_blocks ──────────────────────────────────────────────────────────
+    first_date   = weights_data[0]["date"] if weights_data else today - timedelta(days=365)
     first_monday = get_monday(first_date)
     cutoff_4w    = today - timedelta(weeks=4)
-
     weekly_reports_map = {w["week_start"]: w for w in weekly_reports}
-    weights_by_date    = {iso(w["date"]): float(w["weight"]) for w in weights_data}
 
     weekly_blocks = []
     current_monday = first_monday
     while current_monday <= today:
-        week_end = current_monday + timedelta(days=6)
+        week_end       = current_monday + timedelta(days=6)
         week_start_iso = toISO(current_monday)
         week_end_iso   = toISO(min(week_end, today))
 
-        # Pesos de la semana
-        week_weights = [
-            float(w["weight"]) for w in weights_data
-            if current_monday <= w["date"] <= min(week_end, today)
-        ]
-        avg_weight = round(sum(week_weights) / len(week_weights), 2) if week_weights else None
+        week_weights = [float(w["weight"]) for w in weights_data if current_monday <= w["date"] <= min(week_end, today)]
+        avg_weight   = round(sum(week_weights) / len(week_weights), 2) if week_weights else None
 
-        # daily_weights solo en las últimas 4 semanas
-        if current_monday >= cutoff_4w:
-            daily_weights = [
-                {"date": iso(w["date"]), "weight_kg": float(w["weight"])}
-                for w in weights_data
-                if current_monday <= w["date"] <= min(week_end, today)
-            ]
-        else:
-            daily_weights = None
+        daily_weights = [
+            {"date": iso(w["date"]), "weight_kg": float(w["weight"])}
+            for w in weights_data if current_monday <= w["date"] <= min(week_end, today)
+        ] if current_monday >= cutoff_4w else None
 
-        # Fase de la semana (la del lunes)
-        phase_of_week = get_phase_on_date(phases_data, current_monday)
-        if not phase_of_week:
-            phase_of_week = get_phase_on_date(phases_data, min(week_end, today))
+        phase_of_week = get_phase_on_date(phases_data, current_monday) or get_phase_on_date(phases_data, min(week_end, today))
+        cals_of_week  = get_calories_on_date(calories_data, current_monday)
 
-        # Calorías de la semana
-        cals_of_week = get_calories_on_date(calories_data, current_monday)
-
-        # Informe semanal
         wr = weekly_reports_map.get(current_monday)
         weekly_report = None
         if wr:
@@ -238,7 +213,6 @@ def generate_report(user_id: int) -> str:
                 "notes":              wr["notes"],
             }
 
-        # Solo incluir semanas que tengan algún dato
         if avg_weight or weekly_report:
             weekly_blocks.append({
                 "week_start":    week_start_iso,
@@ -252,7 +226,7 @@ def generate_report(user_id: int) -> str:
 
         current_monday += timedelta(weeks=1)
 
-    # ── gym_exercises ─────────────────────────────────────────────────────────
+    # ── gym_exercises ──────────────────────────────────────────────────────────
     gym_by_exercise = {}
     for log in gym_logs:
         eid = log["exercise_type_id"]
@@ -267,10 +241,10 @@ def generate_report(user_id: int) -> str:
             "one_rm":     one_rm(log["weight"], log["reps"]),
         })
 
-    # ── nutritionist_reports ──────────────────────────────────────────────────
-    nutritionist_reports = []
-    for r in reports_data:
-        nutritionist_reports.append({
+    # ── bioimpedance_reports ───────────────────────────────────────────────────
+    bioimpedance_out = []
+    for r in bioimpedance:
+        bioimpedance_out.append({
             "date":                 iso(r["date"]),
             "body_fat_pct":         float(r["body_fat_pct"])         if r["body_fat_pct"]         else None,
             "skeletal_muscle_mass": float(r["skeletal_muscle_mass"]) if r["skeletal_muscle_mass"] else None,
@@ -280,22 +254,44 @@ def generate_report(user_id: int) -> str:
             "trunk_fat_kg":         float(r["trunk_fat_kg"])         if r["trunk_fat_kg"]         else None,
             "trunk_fat_pct":        float(r["trunk_fat_pct"])        if r["trunk_fat_pct"]        else None,
             "total_body_water":     float(r["total_body_water"])     if r["total_body_water"]     else None,
-            "measurements_cm": {
-                "neck":  float(r["neck_cm"])  if r["neck_cm"]  else None,
-                "chest": float(r["chest_cm"]) if r["chest_cm"] else None,
-                "bicep": float(r["bicep_cm"]) if r["bicep_cm"] else None,
-                "hip":   float(r["hip_cm"])   if r["hip_cm"]   else None,
-                "thigh": float(r["thigh_cm"]) if r["thigh_cm"] else None,
-            },
+        })
+
+    # ── dexa_reports ───────────────────────────────────────────────────────────
+    dexa_out = []
+    for r in dexa:
+        dexa_out.append({
+            "date":                 iso(r["date"]),
+            "fat_mass_kg":          float(r["fat_mass_kg"])          if r["fat_mass_kg"]          else None,
+            "lean_mass_kg":         float(r["lean_mass_kg"])         if r["lean_mass_kg"]         else None,
+            "body_fat_pct":         float(r["body_fat_pct"])         if r["body_fat_pct"]         else None,
+            "muscle_mass_kg":       float(r["muscle_mass_kg"])       if r["muscle_mass_kg"]       else None,
+            "bone_mineral_density": float(r["bone_mineral_density"]) if r["bone_mineral_density"] else None,
+            "visceral_fat_kg":      float(r["visceral_fat_kg"])      if r["visceral_fat_kg"]      else None,
+        })
+
+    # ── body_measurements ──────────────────────────────────────────────────────
+    measurements_out = []
+    for r in measurements:
+        measurements_out.append({
+            "date":         iso(r["date"]),
+            "neck_cm":      float(r["neck_cm"])      if r["neck_cm"]      else None,
+            "shoulders_cm": float(r["shoulders_cm"]) if r["shoulders_cm"] else None,
+            "chest_cm":     float(r["chest_cm"])     if r["chest_cm"]     else None,
+            "bicep_cm":     float(r["bicep_cm"])     if r["bicep_cm"]     else None,
+            "waist_cm":     float(r["waist_cm"])     if r["waist_cm"]     else None,
+            "hip_cm":       float(r["hip_cm"])       if r["hip_cm"]       else None,
+            "thigh_cm":     float(r["thigh_cm"])     if r["thigh_cm"]     else None,
         })
 
     output = {
-        "notes":                 notes,
-        "profile":               profile,
-        "phases":                phases_out,
-        "weekly_blocks":         weekly_blocks,
-        "gym_exercises":         list(gym_by_exercise.values()),
-        "nutritionist_reports":  nutritionist_reports,
+        "notes":                  notes,
+        "profile":                profile,
+        "phases":                 phases_out,
+        "weekly_blocks":          weekly_blocks,
+        "gym_exercises":          list(gym_by_exercise.values()),
+        "bioimpedance_reports":   bioimpedance_out,
+        "dexa_reports":           dexa_out,
+        "body_measurements":      measurements_out,
     }
 
     return json.dumps(output, ensure_ascii=False, indent=2)
@@ -304,83 +300,63 @@ def generate_report(user_id: int) -> str:
 # ── INFORME EN BRUTO ─────────────────────────────────────────────────────────
 
 def generate_raw_report(user_id: int) -> str:
-    weights_data   = sorted(get_weights(user_id),        key=lambda w: w["date"])
-    phases_data    = sorted(get_phases(user_id),         key=lambda p: p["start_date"])
-    reports_data   = sorted(get_reports(user_id),        key=lambda r: r["date"])
-    calories_data  = sorted(get_calories(user_id),       key=lambda c: c["start_date"])
-    gym_logs       = sorted(get_gym_logs(user_id),       key=lambda l: l["start_date"])
-    weekly_reports = sorted(get_weekly_reports(user_id), key=lambda w: w["week_start"])
+    weights_data   = sorted(get_weights(user_id),              key=lambda w: w["date"])
+    phases_data    = sorted(get_phases(user_id),               key=lambda p: p["start_date"])
+    calories_data  = sorted(get_calories(user_id),             key=lambda c: c["start_date"])
+    gym_logs       = sorted(get_gym_logs(user_id),             key=lambda l: l["start_date"])
+    weekly_reports = sorted(get_weekly_reports(user_id),       key=lambda w: w["week_start"])
+    bioimpedance   = sorted(get_bioimpedance_reports(user_id), key=lambda r: r["date"])
+    dexa           = sorted(get_dexa_reports(user_id),         key=lambda r: r["date"])
+    measurements   = sorted(get_body_measurements(user_id),    key=lambda r: r["date"])
     profile_data   = get_user_profile(user_id)
 
     output = {
         "generated_at": datetime.now().date().isoformat(),
         "profile": {
-            "name":        profile_data.get("name")                                     if profile_data else None,
-            "birth_date":  iso(profile_data["birth_date"])                              if profile_data and profile_data.get("birth_date") else None,
-            "sex":         profile_data.get("sex")                                      if profile_data else None,
-            "height_cm":   float(profile_data["height_cm"])                             if profile_data and profile_data.get("height_cm") else None,
-            "allergies":   profile_data.get("allergies")                                if profile_data else None,
-            "supplements": profile_data.get("supplements")                              if profile_data else None,
+            "name":        profile_data.get("name")                                    if profile_data else None,
+            "birth_date":  iso(profile_data["birth_date"])                             if profile_data and profile_data.get("birth_date") else None,
+            "sex":         profile_data.get("sex")                                     if profile_data else None,
+            "height_cm":   float(profile_data["height_cm"])                            if profile_data and profile_data.get("height_cm") else None,
+            "allergies":   profile_data.get("allergies")                               if profile_data else None,
+            "supplements": profile_data.get("supplements")                             if profile_data else None,
         },
         "phases": [
-            {
-                "id":         p["id"],
-                "phase_type": p["phase_type"],
-                "start_date": iso(p["start_date"]),
-                "end_date":   iso(p["end_date"]),
-                "active":     p["end_date"] is None,
-            }
+            {"id": p["id"], "phase_type": p["phase_type"], "start_date": iso(p["start_date"]), "end_date": iso(p["end_date"]), "active": p["end_date"] is None}
             for p in phases_data
         ],
         "weights": [
-            {
-                "id":        w["id"],
-                "date":      iso(w["date"]),
-                "weight_kg": float(w["weight"]),
-            }
+            {"id": w["id"], "date": iso(w["date"]), "weight_kg": float(w["weight"])}
             for w in weights_data
         ],
         "calories": [
-            {
-                "id":         c["id"],
-                "start_date": iso(c["start_date"]),
-                "end_date":   iso(c["end_date"]),
-                "calories":   c["calories"],
-                "active":     c["end_date"] is None,
-            }
+            {"id": c["id"], "start_date": iso(c["start_date"]), "end_date": iso(c["end_date"]), "calories": c["calories"], "active": c["end_date"] is None}
             for c in calories_data
         ],
         "weekly_reports": [
             {
-                "id":               w["id"],
-                "week_start":       iso(w["week_start"]),
-                "training_days":    w["training_days"],
-                "avg_daily_steps":  w["avg_daily_steps"],
-                "alcohol_drinks":   float(w["alcohol_drinks"])     if w["alcohol_drinks"]     else None,
+                "id": w["id"], "week_start": iso(w["week_start"]),
+                "training_days": w["training_days"], "avg_daily_steps": w["avg_daily_steps"],
+                "alcohol_drinks": float(w["alcohol_drinks"]) if w["alcohol_drinks"] else None,
                 "cigarettes_per_day": float(w["cigarettes_per_day"]) if w["cigarettes_per_day"] else None,
-                "avg_water_liters": float(w["avg_water_liters"])   if w["avg_water_liters"]   else None,
-                "notes":            w["notes"],
+                "avg_water_liters": float(w["avg_water_liters"]) if w["avg_water_liters"] else None,
+                "notes": w["notes"],
             }
             for w in weekly_reports
         ],
         "gym_logs": [
             {
-                "id":               l["id"],
-                "exercise_type_id": l["exercise_type_id"],
-                "exercise_name":    l["name"],
-                "category":         l["category"],
-                "start_date":       iso(l["start_date"]),
-                "end_date":         iso(l["end_date"]),
-                "active":           l["end_date"] is None,
-                "weight_kg":        float(l["weight"]) if l["weight"] else None,
-                "reps":             l["reps"],
+                "id": l["id"], "exercise_type_id": l["exercise_type_id"],
+                "exercise_name": l["name"], "category": l["category"],
+                "start_date": iso(l["start_date"]), "end_date": iso(l["end_date"]),
+                "active": l["end_date"] is None,
+                "weight_kg": float(l["weight"]) if l["weight"] else None,
+                "reps": l["reps"],
             }
             for l in gym_logs
         ],
-        "nutritionist_reports": [
+        "bioimpedance_reports": [
             {
-                "id":                   r["id"],
-                "date":                 iso(r["date"]),
+                "id": r["id"], "date": iso(r["date"]),
                 "body_fat_pct":         float(r["body_fat_pct"])         if r["body_fat_pct"]         else None,
                 "skeletal_muscle_mass": float(r["skeletal_muscle_mass"]) if r["skeletal_muscle_mass"] else None,
                 "fat_free_mass":        float(r["fat_free_mass"])        if r["fat_free_mass"]        else None,
@@ -389,13 +365,33 @@ def generate_raw_report(user_id: int) -> str:
                 "trunk_fat_kg":         float(r["trunk_fat_kg"])         if r["trunk_fat_kg"]         else None,
                 "trunk_fat_pct":        float(r["trunk_fat_pct"])        if r["trunk_fat_pct"]        else None,
                 "total_body_water":     float(r["total_body_water"])     if r["total_body_water"]     else None,
-                "neck_cm":              float(r["neck_cm"])               if r["neck_cm"]               else None,
-                "chest_cm":             float(r["chest_cm"])              if r["chest_cm"]              else None,
-                "bicep_cm":             float(r["bicep_cm"])              if r["bicep_cm"]              else None,
-                "hip_cm":               float(r["hip_cm"])                if r["hip_cm"]                else None,
-                "thigh_cm":             float(r["thigh_cm"])              if r["thigh_cm"]              else None,
             }
-            for r in reports_data
+            for r in bioimpedance
+        ],
+        "dexa_reports": [
+            {
+                "id": r["id"], "date": iso(r["date"]),
+                "fat_mass_kg":          float(r["fat_mass_kg"])          if r["fat_mass_kg"]          else None,
+                "lean_mass_kg":         float(r["lean_mass_kg"])         if r["lean_mass_kg"]         else None,
+                "body_fat_pct":         float(r["body_fat_pct"])         if r["body_fat_pct"]         else None,
+                "muscle_mass_kg":       float(r["muscle_mass_kg"])       if r["muscle_mass_kg"]       else None,
+                "bone_mineral_density": float(r["bone_mineral_density"]) if r["bone_mineral_density"] else None,
+                "visceral_fat_kg":      float(r["visceral_fat_kg"])      if r["visceral_fat_kg"]      else None,
+            }
+            for r in dexa
+        ],
+        "body_measurements": [
+            {
+                "id": r["id"], "date": iso(r["date"]),
+                "neck_cm":      float(r["neck_cm"])      if r["neck_cm"]      else None,
+                "shoulders_cm": float(r["shoulders_cm"]) if r["shoulders_cm"] else None,
+                "chest_cm":     float(r["chest_cm"])     if r["chest_cm"]     else None,
+                "bicep_cm":     float(r["bicep_cm"])     if r["bicep_cm"]     else None,
+                "waist_cm":     float(r["waist_cm"])     if r["waist_cm"]     else None,
+                "hip_cm":       float(r["hip_cm"])       if r["hip_cm"]       else None,
+                "thigh_cm":     float(r["thigh_cm"])     if r["thigh_cm"]     else None,
+            }
+            for r in measurements
         ],
     }
 
