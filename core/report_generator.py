@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timedelta
 from db.queries import (
-    get_photo_dates,
     get_weights, get_phases, get_calories, get_gym_logs,
     get_user_profile, get_weekly_reports,
     get_bioimpedance_reports, get_dexa_reports, get_body_measurements
@@ -293,19 +292,7 @@ def generate_report(user_id: int) -> str:
         "bioimpedance_reports":   bioimpedance_out,
         "dexa_reports":           dexa_out,
         "body_measurements":      measurements_out,
-        "progress_photos":        [
-            {
-                "date": str(p["date"]),
-                "types": p["types"],
-                "count": p["count"],
-                "urls": {
-                    t: f"/photos/image/{{photo_id}}"
-                    for t in p["types"]
-                },
-                "note": "Photos are accessible via the API. Use GET /photos/{date} to retrieve full image data for AI vision analysis."
-            }
-            for p in get_photo_dates(user_id)
-        ],
+
     }
 
     return json.dumps(output, ensure_ascii=False, indent=2)

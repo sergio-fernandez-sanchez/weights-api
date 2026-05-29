@@ -281,3 +281,47 @@ async def remove_photo(photo_id: int, user_id: int = Depends(get_current_user_id
     if delete_photo(user_id, photo_id):
         return {"deleted": True}
     raise HTTPException(status_code=404, detail="Photo not found")
+
+
+# ── AI Report with Photos (ZIP) ───────────────────────────────────────────────
+
+from fastapi.responses import StreamingResponse
+import zipfile
+import io
+import base64
+
+@app.get("/generate-report/zip")
+async def generate_report_zip(user_id: int = Depends(get_current_user_id)):
+    # Generate the JSON report
+    report_json = generate_report(user_id)
+
+    # Get all photos
+    photo_dates = get_photo_dates(user_id)
+    all_photos = []
+    for pd in photo_dates:
+        date_str = str(pd["date"])
+        date_photos = get_photos_by_date(user_id, date_str)
+        for photo in date_photos:
+            all_photos.append({
+                "filename": f"photos/{date_str}_{photo['photo_type']}.jpg",
+                "data": photo["image_data"],
+            })
+
+    # Create ZIP in memory
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("weights_report.json", report_json)
+        for photo in all_photos:
+            try:
+                image_bytes = base64.b64decode(photo["data"])
+                zf.writestr(photo["filename"], image_bytes)
+            except Exception:
+                pass
+
+    buffer.seek(0)
+    today = date.today().isoformat()
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="weights_report_{today}.zip"'}
+    )
