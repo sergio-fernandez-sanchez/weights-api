@@ -94,3 +94,8 @@ class BodyMeasurementInput(BaseModel):
     waist_cm:     Optional[float] = None
     hip_cm:       Optional[float] = None
     thigh_cm:     Optional[float] = None
+
+class PhotoInput(BaseModel):
+    date: str | None = None
+    photo_type: str  # 'front', 'side', 'back'
+    image_data: str  # base64

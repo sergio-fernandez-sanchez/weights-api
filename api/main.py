@@ -250,3 +250,34 @@ async def get_ai_report_ep(user_id: int = Depends(get_current_user_id)):
 @app.get("/generate-report/raw")
 async def get_raw_report_ep(user_id: int = Depends(get_current_user_id)):
     return PlainTextResponse(generate_raw_report(user_id))
+
+# ── Photos ─────────────────────────────────────────────────────────────────────
+
+from api.schemas import PhotoInput
+from db.queries import get_photos, get_photos_by_date, get_photo_by_id, insert_photo, delete_photo, get_photo_dates
+
+@app.get("/photos")
+async def list_photos(user_id: int = Depends(get_current_user_id)):
+    return get_photo_dates(user_id)
+
+@app.get("/photos/{date}")
+async def list_photos_by_date(date: str, user_id: int = Depends(get_current_user_id)):
+    return get_photos_by_date(user_id, date)
+
+@app.get("/photos/image/{photo_id}")
+async def get_photo_image(photo_id: int, user_id: int = Depends(get_current_user_id)):
+    photo = get_photo_by_id(user_id, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return photo
+
+@app.post("/photos")
+async def upload_photo(data: PhotoInput, user_id: int = Depends(get_current_user_id)):
+    photo_date = data.date or str(date.today())
+    return insert_photo(user_id, photo_date, data.photo_type, data.image_data)
+
+@app.delete("/photos/{photo_id}")
+async def remove_photo(photo_id: int, user_id: int = Depends(get_current_user_id)):
+    if delete_photo(user_id, photo_id):
+        return {"deleted": True}
+    raise HTTPException(status_code=404, detail="Photo not found")

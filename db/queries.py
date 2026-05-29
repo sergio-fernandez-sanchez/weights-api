@@ -721,3 +721,112 @@ def insert_body_measurement(user_id: int, data: dict) -> str:
         raise e
     finally:
         conn.close()
+
+# ── Photos ─────────────────────────────────────────────────────────────────────
+
+def get_photos(user_id: int) -> list:
+    """Returns all photo entries for the user (without image data for listing)."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            SELECT id, date, photo_type, created_at
+            FROM progress_photos
+            WHERE user_id = %s
+            ORDER BY date DESC, photo_type
+        """, (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def get_photos_by_date(user_id: int, date: str) -> list:
+    """Returns all photos for a specific date with image data."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            SELECT id, date, photo_type, image_data, created_at
+            FROM progress_photos
+            WHERE user_id = %s AND date = %s
+            ORDER BY photo_type
+        """, (user_id, date))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def get_photo_by_id(user_id: int, photo_id: int) -> dict:
+    """Returns a single photo with image data."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            SELECT id, date, photo_type, image_data, created_at
+            FROM progress_photos
+            WHERE user_id = %s AND id = %s
+        """, (user_id, photo_id))
+        return cursor.fetchone()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
+
+
+def insert_photo(user_id: int, date: str, photo_type: str, image_data: str) -> dict:
+    """Inserts a progress photo. image_data is base64."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            INSERT INTO progress_photos (user_id, date, photo_type, image_data)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id, date, photo_type, created_at
+        """, (user_id, date, photo_type, image_data))
+        conn.commit()
+        return cursor.fetchone()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def delete_photo(user_id: int, photo_id: int) -> bool:
+    """Deletes a photo."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM progress_photos WHERE user_id = %s AND id = %s
+        """, (user_id, photo_id))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def get_photo_dates(user_id: int) -> list:
+    """Returns distinct dates that have photos."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("""
+            SELECT date, array_agg(photo_type ORDER BY photo_type) as types, count(*) as count
+            FROM progress_photos
+            WHERE user_id = %s
+            GROUP BY date
+            ORDER BY date DESC
+        """, (user_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        raise e
+    finally:
+        conn.close()
