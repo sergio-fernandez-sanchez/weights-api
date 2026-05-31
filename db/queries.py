@@ -748,7 +748,7 @@ def get_photos_by_date(user_id: int, date: str) -> list:
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
-            SELECT id, date, photo_type, image_data, created_at
+            SELECT id, date, photo_type, image_data, phase_type, created_at
             FROM progress_photos
             WHERE user_id = %s AND date = %s
             ORDER BY photo_type
@@ -766,7 +766,7 @@ def get_photo_by_id(user_id: int, photo_id: int) -> dict:
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
-            SELECT id, date, photo_type, image_data, created_at
+            SELECT id, date, photo_type, image_data, phase_type, created_at
             FROM progress_photos
             WHERE user_id = %s AND id = %s
         """, (user_id, photo_id))
@@ -777,16 +777,16 @@ def get_photo_by_id(user_id: int, photo_id: int) -> dict:
         conn.close()
 
 
-def insert_photo(user_id: int, date: str, photo_type: str, image_data: str) -> dict:
-    """Inserts a progress photo. image_data is base64."""
+def insert_photo(user_id: int, date: str, photo_type: str, image_data: str, phase_type: str | None = None) -> dict:
+    """Inserts a progress photo. image_data is base64. phase_type optional."""
     conn = get_connection()
     try:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("""
-            INSERT INTO progress_photos (user_id, date, photo_type, image_data)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id, date, photo_type, created_at
-        """, (user_id, date, photo_type, image_data))
+            INSERT INTO progress_photos (user_id, date, photo_type, image_data, phase_type)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id, date, photo_type, phase_type, created_at
+        """, (user_id, date, photo_type, image_data, phase_type))
         conn.commit()
         return cursor.fetchone()
     except Exception as e:

@@ -99,3 +99,4 @@ class PhotoInput(BaseModel):
     date: str | None = None
     photo_type: str  # 'front', 'side', 'back'
     image_data: str  # base64
+    phase_type: str | None = None  # 'bulk', 'cut', 'maintenance' — fase asociada

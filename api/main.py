@@ -274,7 +274,7 @@ async def get_photo_image(photo_id: int, user_id: int = Depends(get_current_user
 @app.post("/photos")
 async def upload_photo(data: PhotoInput, user_id: int = Depends(get_current_user_id)):
     photo_date = data.date or str(date.today())
-    return insert_photo(user_id, photo_date, data.photo_type, data.image_data)
+    return insert_photo(user_id, photo_date, data.photo_type, data.image_data, data.phase_type)
 
 @app.delete("/photos/{photo_id}")
 async def remove_photo(photo_id: int, user_id: int = Depends(get_current_user_id)):
